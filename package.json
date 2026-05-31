@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-oauth/google": "^0.13.5",
     "browser-image-compression": "^2.0.2",
     "dexie": "^4.0.8",
     "dexie-react-hooks": "^1.1.7",

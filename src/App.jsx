@@ -4,6 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import localforage from 'localforage'
 import imageCompression from 'browser-image-compression'
+import { useGoogleLogin } from '@react-oauth/google'
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const TILE_LAYERS = {
@@ -101,7 +102,7 @@ const newMuestra = () => ({
   mineralogia: [],
   alteracion: { Kaolín: null, FeOx: null, Qz: null, Biotita: null, Muscovita: null },
   mineralizacion: '', comentario: '', takenBy: '', semana: '',
-  fotos: [],      // [{ file: Blob, url: string, name: string }]
+  fotos: [],
   audioBlob: null,
 })
 
@@ -222,23 +223,13 @@ function FotoGaleria({ fotos, onChange }) {
     if (!files.length) return
     setIsCompressing(true)
     
-    // Configuración de compresión
-    const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1280,
-      useWebWorker: true,
-      initialQuality: 0.8
-    }
+    const options = { maxSizeMB: 1, maxWidthOrHeight: 1280, useWebWorker: true, initialQuality: 0.8 }
 
     const compressed = await Promise.all(
       files.map(async (f) => {
         try {
           const compressedFile = await imageCompression(f, options)
-          return {
-            file: compressedFile,
-            url: URL.createObjectURL(compressedFile),
-            name: f.name
-          }
+          return { file: compressedFile, url: URL.createObjectURL(compressedFile), name: f.name }
         } catch (error) {
           console.error('Error al comprimir foto:', error)
           return { file: f, url: URL.createObjectURL(f), name: f.name }
@@ -261,54 +252,34 @@ function FotoGaleria({ fotos, onChange }) {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         {fotos.map((f, i) => (
           <div key={i} style={{ position: 'relative', width: 76, height: 76, flexShrink: 0 }}>
-            <img
-              src={f.url} alt={`foto ${i + 1}`}
-              onClick={() => setLightbox(f.url)}
-              style={{
-                width: '100%', height: '100%', objectFit: 'cover',
-                borderRadius: 10, cursor: 'zoom-in',
-                border: '1.5px solid rgba(212,175,55,0.3)',
-              }}
-            />
+            <img src={f.url} alt={`foto ${i + 1}`} onClick={() => setLightbox(f.url)} style={{
+              width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10, cursor: 'zoom-in',
+              border: '1.5px solid rgba(212,175,55,0.3)',
+            }} />
             <button onClick={() => remove(i)} style={{
-              position: 'absolute', top: -7, right: -7,
-              width: 20, height: 20, borderRadius: '50%',
-              background: '#B91C1C', border: '2px solid #0a0a0b',
-              color: '#fff', fontSize: 9, cursor: 'pointer',
+              position: 'absolute', top: -7, right: -7, width: 20, height: 20, borderRadius: '50%',
+              background: '#B91C1C', border: '2px solid #0a0a0b', color: '#fff', fontSize: 9, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800,
             }}>✕</button>
           </div>
         ))}
         
         <button onClick={() => inputRef.current.click()} disabled={isCompressing} style={{
-          width: 76, height: 76, borderRadius: 10, flexShrink: 0,
-          border: '1.5px dashed rgba(212,175,55,0.4)',
-          background: 'rgba(212,175,55,0.04)',
-          color: isCompressing ? '#888' : '#D4AF37', cursor: isCompressing ? 'wait' : 'pointer',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          gap: 4, fontFamily: 'Inter, sans-serif', fontSize: 10,
-          transition: 'background 0.2s', opacity: isCompressing ? 0.6 : 1
+          width: 76, height: 76, borderRadius: 10, flexShrink: 0, border: '1.5px dashed rgba(212,175,55,0.4)',
+          background: 'rgba(212,175,55,0.04)', color: isCompressing ? '#888' : '#D4AF37', cursor: isCompressing ? 'wait' : 'pointer',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 4, fontFamily: 'Inter, sans-serif', fontSize: 10, transition: 'background 0.2s', opacity: isCompressing ? 0.6 : 1
         }}>
           {isCompressing ? '⏳' : <><span style={{ fontSize: 22 }}>📸</span>Foto</>}
         </button>
       </div>
-      <input
-        ref={inputRef} type="file" accept="image/*"
-        capture="environment" multiple onChange={handleFiles}
-        style={{ display: 'none' }}
-      />
+      <input ref={inputRef} type="file" accept="image/*" capture="environment" multiple onChange={handleFiles} style={{ display: 'none' }} />
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(0,0,0,0.93)', backdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'zoom-out',
+          position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.93)', backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out',
         }}>
-          <img src={lightbox} alt="ampliada" style={{
-            maxWidth: '96vw', maxHeight: '90vh',
-            borderRadius: 14, objectFit: 'contain',
-          }} />
+          <img src={lightbox} alt="ampliada" style={{ maxWidth: '96vw', maxHeight: '90vh', borderRadius: 14, objectFit: 'contain' }} />
         </div>
       )}
     </>
@@ -318,8 +289,7 @@ function FotoGaleria({ fotos, onChange }) {
 function SectionLabel({ icon, text }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 7,
-      margin: '16px 0 9px', paddingBottom: 6,
+      display: 'flex', alignItems: 'center', gap: 7, margin: '16px 0 9px', paddingBottom: 6,
       borderBottom: '1px solid rgba(212,175,55,0.12)',
     }}>
       <span style={{ fontSize: 13 }}>{icon}</span>
@@ -331,44 +301,29 @@ function SectionLabel({ icon, text }) {
 function DestructiveModal({ isOpen, title, message, onConfirm, onCancel, keyword }) {
   const [input, setInput] = useState('')
   if (!isOpen) return null
-  
   const isMatch = !keyword || input === keyword
-
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20
+      position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
     }}>
       <div className="slide-up" style={{
-        background: '#111113', borderRadius: 16, padding: 24,
-        border: '1px solid rgba(185,28,28,0.5)', maxWidth: 400, width: '100%'
+        background: '#111113', borderRadius: 16, padding: 24, border: '1px solid rgba(185,28,28,0.5)', maxWidth: 400, width: '100%'
       }}>
         <h3 style={{ color: '#EF4444', marginTop: 0, fontFamily: 'Inter, sans-serif' }}>⚠️ {title}</h3>
         <p style={{ color: '#ccc', fontSize: 13, lineHeight: 1.5, fontFamily: 'Inter, sans-serif' }}>{message}</p>
-        
         {keyword && (
           <div style={{ margin: '20px 0' }}>
             <label style={labelSt}>Escribe <strong>{keyword}</strong> para confirmar:</label>
-            <input 
-              style={{...inputSt, border: '1px solid rgba(185,28,28,0.5)'}}
-              value={input} onChange={e => setInput(e.target.value)}
-              placeholder={keyword}
-            />
+            <input style={{...inputSt, border: '1px solid rgba(185,28,28,0.5)'}} value={input} onChange={e => setInput(e.target.value)} placeholder={keyword} />
           </div>
         )}
-
         <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
           <button onClick={onCancel} style={{
-            flex: 1, padding: 12, borderRadius: 8, background: '#222', border: 'none',
-            color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: 600
+            flex: 1, padding: 12, borderRadius: 8, background: '#222', border: 'none', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: 600
           }}>Cancelar</button>
-          
           <button disabled={!isMatch} onClick={onConfirm} style={{
-            flex: 1, padding: 12, borderRadius: 8, background: isMatch ? '#B91C1C' : '#552222', 
-            border: 'none', color: isMatch ? '#fff' : '#888', cursor: isMatch ? 'pointer' : 'not-allowed',
-            fontFamily: 'Inter, sans-serif', fontWeight: 600, transition: 'all 0.2s'
+            flex: 1, padding: 12, borderRadius: 8, background: isMatch ? '#B91C1C' : '#552222', border: 'none', color: isMatch ? '#fff' : '#888', cursor: isMatch ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif', fontWeight: 600, transition: 'all 0.2s'
           }}>Confirmar</button>
         </div>
       </div>
@@ -425,19 +380,15 @@ function MuestraForm({ muestra, index, onChange, onRemove, canRemove }) {
     <div style={{
       borderRadius: 14, marginBottom: 10, overflow: 'hidden',
       border: `1px solid ${expanded ? 'rgba(212,175,55,0.35)' : 'rgba(255,255,255,0.07)'}`,
-      background: expanded ? 'rgba(12,12,14,0.9)' : '#0F0F11',
-      transition: 'border-color 0.2s',
+      background: expanded ? 'rgba(12,12,14,0.9)' : '#0F0F11', transition: 'border-color 0.2s',
     }}>
       <div onClick={() => setExpanded(e => !e)} style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 14px', cursor: 'pointer', userSelect: 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', cursor: 'pointer', userSelect: 'none',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{
-            width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-            background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.4)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 10, fontWeight: 800, color: '#D4AF37', fontFamily: 'Inter, sans-serif',
+            width: 24, height: 24, borderRadius: '50%', flexShrink: 0, background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#D4AF37', fontFamily: 'Inter, sans-serif',
           }}>{index + 1}</span>
           <span style={{ fontSize: 12, color: expanded ? '#ddd' : '#8E8E93', fontFamily: 'Inter, sans-serif' }}>
             {expanded ? 'MUESTRA' : summary}
@@ -448,8 +399,7 @@ function MuestraForm({ muestra, index, onChange, onRemove, canRemove }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {canRemove && (
             <button onClick={e => { e.stopPropagation(); onRemove() }} style={{
-              background: 'none', border: 'none', color: '#7f1d1d',
-              cursor: 'pointer', fontSize: 15, padding: '2px 4px', lineHeight: 1,
+              background: 'none', border: 'none', color: '#7f1d1d', cursor: 'pointer', fontSize: 15, padding: '2px 4px', lineHeight: 1,
             }} title="Eliminar muestra">🗑️</button>
           )}
           <span style={{ color: '#555', fontSize: 12 }}>{expanded ? '▲' : '▼'}</span>
@@ -592,19 +542,12 @@ function PuntoForm({ position, onSave, onClose }) {
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px 0' }}>
           {muestras.map((m, i) => (
-            <MuestraForm
-              key={m._id} muestra={m} index={i}
-              onChange={data => update(m._id, data)}
-              onRemove={() => requestRemove(m._id)}
-              canRemove={muestras.length > 1}
-            />
+            <MuestraForm key={m._id} muestra={m} index={i} onChange={data => update(m._id, data)} onRemove={() => requestRemove(m._id)} canRemove={muestras.length > 1} />
           ))}
           <button onClick={add} style={{
             width: '100%', padding: '12px', borderRadius: 12, marginBottom: 16,
-            border: '1.5px dashed rgba(212,175,55,0.35)',
-            background: 'rgba(212,175,55,0.03)', color: '#D4AF37',
-            cursor: 'pointer', fontSize: 13, fontFamily: 'Inter, sans-serif',
-            fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            border: '1.5px dashed rgba(212,175,55,0.35)', background: 'rgba(212,175,55,0.03)', color: '#D4AF37',
+            cursor: 'pointer', fontSize: 13, fontFamily: 'Inter, sans-serif', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}>
             ＋ Agregar muestra en este punto
           </button>
@@ -612,12 +555,8 @@ function PuntoForm({ position, onSave, onClose }) {
 
         <div style={{ padding: '12px 16px 28px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
           <button onClick={handleSave} style={{
-            width: '100%', padding: '14px', borderRadius: 14,
-            background: 'linear-gradient(135deg, #B91C1C, #7f1d1d)',
-            border: '1px solid rgba(212,175,55,0.3)',
-            color: '#fff', fontSize: 14, fontWeight: 700,
-            cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-            letterSpacing: '0.06em',
+            width: '100%', padding: '14px', borderRadius: 14, background: 'linear-gradient(135deg, #B91C1C, #7f1d1d)', border: '1px solid rgba(212,175,55,0.3)',
+            color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '0.06em',
           }}>
             💾 GUARDAR PUNTO — {muestras.length} muestra{muestras.length !== 1 ? 's' : ''}
           </button>
@@ -635,7 +574,7 @@ function PuntoForm({ position, onSave, onClose }) {
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onCloudSync, isSyncing, onClearAll }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
@@ -679,15 +618,13 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onCloudSync,
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {s.muestras.slice(0, 2).map((m, j) => (
                       <span key={j} style={{
-                        padding: '2px 8px', borderRadius: 6, fontSize: 11,
-                        background: 'rgba(212,175,55,0.1)', color: '#D4AF37',
+                        padding: '2px 8px', borderRadius: 6, fontSize: 11, background: 'rgba(212,175,55,0.1)', color: '#D4AF37',
                         border: '1px solid rgba(212,175,55,0.25)', fontFamily: 'Inter, sans-serif', fontWeight: 600,
                       }}>{m.cp} · {m.idSample}</span>
                     ))}
                     {s.muestras.length > 2 && (
                       <span style={{
-                        padding: '2px 8px', borderRadius: 6, fontSize: 11,
-                        background: 'rgba(212,175,55,0.06)', color: '#8E8E93', border: '1px solid rgba(255,255,255,0.08)',
+                        padding: '2px 8px', borderRadius: 6, fontSize: 11, background: 'rgba(212,175,55,0.06)', color: '#8E8E93', border: '1px solid rgba(255,255,255,0.08)',
                       }}>+{s.muestras.length - 2}</span>
                     )}
                   </div>
@@ -717,18 +654,30 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onCloudSync,
 
         {stations.length > 0 && (
           <div style={{ padding: '12px 16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/* NUEVO BOTON CLOUD SYNC */}
-            <button onClick={onCloudSync} disabled={isBusy} style={{
-              width: '100%', padding: '13px', borderRadius: 12,
-              background: isBusy ? '#333' : 'linear-gradient(135deg, #10B981, #047857)',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
-              color: isBusy ? '#888' : '#fff', fontSize: 13, fontWeight: 700,
-              cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              transition: 'all 0.3s'
-            }}>
-              {isSyncing ? '⏳ Enviando a la Central...' : '☁️ Sincronizar a la Nube'}
-            </button>
+            {!driveToken ? (
+              <button onClick={loginToDrive} disabled={isBusy} style={{
+                width: '100%', padding: '13px', borderRadius: 12,
+                background: '#fff', color: '#000', fontSize: 13, fontWeight: 700,
+                cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                border: '1px solid #ccc'
+              }}>
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width={16} alt="G" />
+                Conectar Google Drive
+              </button>
+            ) : (
+              <button onClick={onDriveSync} disabled={isBusy} style={{
+                width: '100%', padding: '13px', borderRadius: 12,
+                background: isBusy ? '#333' : 'linear-gradient(135deg, #10B981, #047857)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: isBusy ? '#888' : '#fff', fontSize: 13, fontWeight: 700,
+                cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                transition: 'all 0.3s'
+              }}>
+                {isSyncing ? '⏳ Subiendo a Drive...' : '☁️ Guardar en mi Drive'}
+              </button>
+            )}
             
             <button onClick={onExport} disabled={isBusy} style={{
               width: '100%', padding: '13px', borderRadius: 12,
@@ -773,6 +722,16 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [driveToken, setDriveToken] = useState(null)
+
+  // ─── GOOGLE LOGIN ───
+  const loginToDrive = useGoogleLogin({
+    onSuccess: (tokenResponse) => {
+      setDriveToken(tokenResponse.access_token)
+    },
+    onError: () => alert('Error al iniciar sesión con Google'),
+    scope: 'https://www.googleapis.com/auth/drive.file'
+  })
 
   useEffect(() => {
     async function loadData() {
@@ -918,41 +877,58 @@ export default function App() {
     }
   }, [stations])
 
-  // ─── CLOUD SYNC (Universal Webhook) ───
-  const handleCloudSync = useCallback(async () => {
-    const webhookUrl = import.meta.env.VITE_CLOUD_SYNC_WEBHOOK
-    if (!webhookUrl) {
-      alert("⚠️ El sistema no tiene configurada la URL de la Central (Webhook). Contacta al administrador para configurar VITE_CLOUD_SYNC_WEBHOOK.")
-      return
-    }
-
+  // ─── CLOUD SYNC (Direct to Google Drive) ───
+  const handleDriveSync = useCallback(async () => {
+    if (!driveToken) return
     setIsSyncing(true)
     try {
       const blob = await generateZipBlob()
-      const formData = new FormData()
       
-      const fileName = `campana_GeoINducta_${new Date().toISOString().slice(0, 10)}.zip`
-      formData.append('file', blob, fileName)
-      
-      // Metadata extra para el backend
-      formData.append('geologist', stations[0]?.muestras[0]?.takenBy || 'Desconocido')
-      formData.append('pointsCount', stations.length)
-      
-      const response = await fetch(webhookUrl, {
+      const boundary = 'geoinducta_boundary_' + Date.now()
+      const delimiter = "\r\n--" + boundary + "\r\n"
+      const close_delim = "\r\n--" + boundary + "--"
+
+      const metadata = {
+        name: `GeoINducta_${new Date().toISOString().slice(0, 10)}.zip`,
+        mimeType: 'application/zip'
+      }
+
+      // We construct the multipart/related body manually
+      const multipartRequestBody = new Blob([
+        delimiter,
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n',
+        JSON.stringify(metadata),
+        delimiter,
+        'Content-Type: application/zip\r\n\r\n',
+        blob,
+        close_delim
+      ])
+
+      const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Authorization': `Bearer ${driveToken}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body: multipartRequestBody
       })
       
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error?.message || 'Error en subida')
+      }
       
-      alert("✅ ¡Sincronización Exitosa!\n\nLos datos han sido enviados a la Central y estarán disponibles en el Drive/Correo corporativo.")
+      alert("✅ ¡Sincronización Exitosa!\n\nEl archivo ZIP ha sido guardado directamente en tu Google Drive.")
     } catch (err) {
-      console.error("Cloud sync error", err)
-      alert("❌ Error al enviar a la nube.\n\nVerifica que tienes conexión a internet (3G/4G/WiFi) y vuelve a intentarlo. Tus datos están seguros en el dispositivo.")
+      console.error("Drive sync error", err)
+      alert(`❌ Error al subir a Drive.\n${err.message}`)
+      if (err.message.includes('Invalid Credentials') || err.message.includes('Auth')) {
+        setDriveToken(null) // Reset token if expired
+      }
     } finally {
       setIsSyncing(false)
     }
-  }, [stations])
+  }, [stations, driveToken])
 
 
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
@@ -1012,8 +988,7 @@ export default function App() {
                 </strong>
                 {s.muestras.map((m, j) => (
                   <div key={m._id || j} style={{
-                    marginBottom: 6, paddingBottom: 6,
-                    borderBottom: j < s.muestras.length - 1 ? '1px solid #eee' : 'none',
+                    marginBottom: 6, paddingBottom: 6, borderBottom: j < s.muestras.length - 1 ? '1px solid #eee' : 'none',
                   }}>
                     <div><b>{m.cp}</b> — {m.idSample}</div>
                     {m.horizonte && <div>Horizonte: {m.horizonte}</div>}
@@ -1047,9 +1022,11 @@ export default function App() {
           onClose={() => setShowSidebar(false)}
           onExport={handleExport}
           isExporting={isExporting}
-          onCloudSync={handleCloudSync}
+          onDriveSync={handleDriveSync}
           isSyncing={isSyncing}
           onClearAll={handleClearAll}
+          driveToken={driveToken}
+          loginToDrive={loginToDrive}
         />
       )}
 

@@ -5,6 +5,10 @@ import 'leaflet/dist/leaflet.css'
 import localforage from 'localforage'
 import imageCompression from 'browser-image-compression'
 import { useGoogleLogin } from '@react-oauth/google'
+import { kml } from '@tmcw/togeojson'
+import parseGeoraster from 'georaster'
+import GeoRasterLayer from 'georaster-layer-for-leaflet'
+import { GeoJSON } from 'react-leaflet'
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const TILE_LAYERS = {
@@ -120,6 +124,29 @@ const labelSt = {
 }
 
 // ─── COMPONENTS ──────────────────────────────────────────────────────────────
+function GeoTiffLayer({ georaster }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!georaster) return
+    let layer
+    try {
+      layer = new GeoRasterLayer({
+        georaster,
+        opacity: 0.7,
+        resolution: 256
+      })
+      layer.addTo(map)
+      map.fitBounds(layer.getBounds())
+    } catch (err) {
+      console.error('Error renderizando GeoTIFF', err)
+    }
+    return () => {
+      if (layer) map.removeLayer(layer)
+    }
+  }, [georaster, map])
+  return null
+}
+
 function GPSTracker({ onPosition }) {
   const map = useMap()
   
@@ -585,7 +612,7 @@ function PuntoForm({ position, onSave, onClose, initialData }) {
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, externalLayers, onRemoveLayer }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
@@ -612,6 +639,22 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+          {externalLayers && externalLayers.length > 0 && (
+            <div style={{ marginBottom: 16, padding: '0 4px' }}>
+              <div style={{ color: '#D4AF37', fontWeight: 700, fontSize: 11, letterSpacing: '0.1em', marginBottom: 6 }}>🗺️ CAPAS EXTERNAS</div>
+              {externalLayers.map(l => (
+                <div key={l.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: 6, marginBottom: 4,
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                  <span style={{ fontSize: 11, color: '#ccc', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{l.name}</span>
+                  <button onClick={() => onRemoveLayer(l.id)} style={{ background: 'none', border: 'none', color: '#B91C1C', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {stations.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#8E8E93', marginTop: 48, fontSize: 13 }}>
               <div style={{ fontSize: 36, marginBottom: 10 }}>🗺️</div>
@@ -742,6 +785,9 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
   const [driveToken, setDriveToken] = useState(null)
+  
+  const [externalLayers, setExternalLayers] = useState([])
+  const fileInputRef = useRef(null)
 
   // ─── GOOGLE LOGIN ───
   const loginToDrive = useGoogleLogin({
@@ -816,6 +862,49 @@ export default function App() {
   const handleClearAll = useCallback(() => {
     saveStations([])
   }, [])
+
+  const handleLayerUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const name = file.name
+    const ext = name.split('.').pop().toLowerCase()
+    
+    try {
+      if (ext === 'kmz') {
+        const { default: JSZip } = await import('jszip')
+        const arrayBuffer = await file.arrayBuffer()
+        const zip = await JSZip.loadAsync(arrayBuffer)
+        const kmlFile = Object.values(zip.files).find(f => f.name.endsWith('.kml'))
+        if (kmlFile) {
+          const text = await kmlFile.async('text')
+          const dom = new DOMParser().parseFromString(text, 'text/xml')
+          const geojson = kml(dom)
+          setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
+        } else {
+          alert('No se encontró archivo .kml dentro del KMZ')
+        }
+      } else if (ext === 'kml') {
+        const text = await file.text()
+        const dom = new DOMParser().parseFromString(text, 'text/xml')
+        const geojson = kml(dom)
+        setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
+      } else if (ext === 'geojson' || ext === 'json') {
+        const text = await file.text()
+        const geojson = JSON.parse(text)
+        setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
+      } else if (ext === 'tif' || ext === 'tiff') {
+        const arrayBuffer = await file.arrayBuffer()
+        const raster = await parseGeoraster(arrayBuffer)
+        setExternalLayers(prev => [...prev, { id: generateId(), type: 'geotiff', georaster: raster, name }])
+      } else {
+        alert('Formato no soportado. Usa KML, KMZ, GeoJSON o TIF.')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Error procesando el archivo.')
+    }
+    e.target.value = ''
+  }
 
   // ─── CORE ZIP GENERATOR ───
   const generateZipBlob = async () => {
@@ -1002,6 +1091,13 @@ export default function App() {
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => fileInputRef.current?.click()} style={{
+            background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.4)',
+            color: '#60A5FA', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif'
+          }}>+ 🗺️ Capa</button>
+          <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff" style={{ display: 'none' }} />
+          
           {gpsPosition && (
             <span style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }}>
               📍 GPS
@@ -1026,6 +1122,15 @@ export default function App() {
         <GPSTracker onPosition={setGpsPosition} />
 
         {gpsPosition && <Marker position={gpsPosition} icon={gpsIcon}><Popup>Tu posición actual</Popup></Marker>}
+
+        {externalLayers.map(layer => {
+          if (layer.type === 'geojson') {
+            return <GeoJSON key={layer.id} data={layer.data} style={{ color: '#3B82F6', weight: 2, opacity: 0.8 }} />
+          } else if (layer.type === 'geotiff') {
+            return <GeoTiffLayer key={layer.id} georaster={layer.georaster} />
+          }
+          return null
+        })}
 
         {stations.map((s, i) => (
           <Marker key={s.id || i} position={s.position} icon={createStationIcon(s.muestras)}>
@@ -1075,6 +1180,8 @@ export default function App() {
           onClearAll={handleClearAll}
           driveToken={driveToken}
           loginToDrive={loginToDrive}
+          externalLayers={externalLayers}
+          onRemoveLayer={(id) => setExternalLayers(prev => prev.filter(l => l.id !== id))}
           onEditStation={(s) => {
             setEditingStation(s)
             setShowForm(true)

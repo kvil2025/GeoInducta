@@ -8,6 +8,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
+      workbox: {
+        maximumFileSizeToCacheInBytes: 10000000, // 10MB limit for parsing libraries
+      },
       manifest: {
         name: 'GeoINducta',
         short_name: 'GeoINducta',

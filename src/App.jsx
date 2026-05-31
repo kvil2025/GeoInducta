@@ -222,7 +222,7 @@ function FotoGaleria({ fotos, onChange }) {
     if (!files.length) return
     setIsCompressing(true)
     
-    // Configuración de compresión (Antigravity Checklist: Rendimiento)
+    // Configuración de compresión
     const options = {
       maxSizeMB: 1,
       maxWidthOrHeight: 1280,
@@ -328,7 +328,6 @@ function SectionLabel({ icon, text }) {
   )
 }
 
-// ─── MODAL CONFIRMACION DESTRUCTIVA (Antigravity Checklist) ──────────────────
 function DestructiveModal({ isOpen, title, message, onConfirm, onCancel, keyword }) {
   const [input, setInput] = useState('')
   if (!isOpen) return null
@@ -370,7 +369,7 @@ function DestructiveModal({ isOpen, title, message, onConfirm, onCancel, keyword
             flex: 1, padding: 12, borderRadius: 8, background: isMatch ? '#B91C1C' : '#552222', 
             border: 'none', color: isMatch ? '#fff' : '#888', cursor: isMatch ? 'pointer' : 'not-allowed',
             fontFamily: 'Inter, sans-serif', fontWeight: 600, transition: 'all 0.2s'
-          }}>Confirmar Eliminación</button>
+          }}>Confirmar</button>
         </div>
       </div>
     </div>
@@ -429,7 +428,6 @@ function MuestraForm({ muestra, index, onChange, onRemove, canRemove }) {
       background: expanded ? 'rgba(12,12,14,0.9)' : '#0F0F11',
       transition: 'border-color 0.2s',
     }}>
-      {/* Accordion header */}
       <div onClick={() => setExpanded(e => !e)} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '12px 14px', cursor: 'pointer', userSelect: 'none',
@@ -458,19 +456,12 @@ function MuestraForm({ muestra, index, onChange, onRemove, canRemove }) {
         </div>
       </div>
 
-      {/* Expanded fields */}
       {expanded && (
         <div style={{ padding: '0 14px 18px' }}>
           <SectionLabel icon="🏷️" text="IDENTIFICACIÓN" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-            <div>
-              <label style={labelSt}>CP *</label>
-              <input style={inputSt} placeholder="ej: CP-01" value={muestra.cp} onChange={e => set('cp', e.target.value)} />
-            </div>
-            <div>
-              <label style={labelSt}>IDSAMPLE *</label>
-              <input style={inputSt} placeholder="ej: S-001" value={muestra.idSample} onChange={e => set('idSample', e.target.value)} />
-            </div>
+            <div><label style={labelSt}>CP *</label><input style={inputSt} placeholder="ej: CP-01" value={muestra.cp} onChange={e => set('cp', e.target.value)} /></div>
+            <div><label style={labelSt}>IDSAMPLE *</label><input style={inputSt} placeholder="ej: S-001" value={muestra.idSample} onChange={e => set('idSample', e.target.value)} /></div>
           </div>
 
           <SectionLabel icon="📐" text="POSICIÓN & PROFUNDIDAD" />
@@ -639,16 +630,17 @@ function PuntoForm({ position, onSave, onClose }) {
         message="¿Estás seguro que deseas eliminar esta muestra? Los datos ingresados no se podrán recuperar."
         onCancel={() => setDeleteModalOpen(false)}
         onConfirm={confirmRemove}
-        // keyword="BORRAR" // Opcional, lo omitimos para muestras individuales para reducir fricción.
       />
     </>
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onClearAll }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onCloudSync, isSyncing, onClearAll }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
+
+  const isBusy = isExporting || isSyncing
 
   return (
     <>
@@ -660,7 +652,7 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onClearAll }
         <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em' }}>⛏️ CAMPAÑA</span>
-            <button onClick={onClose} disabled={isExporting} style={{ background: 'none', border: 'none', color: '#8E8E93', cursor: 'pointer', fontSize: 18 }}>✕</button>
+            <button onClick={onClose} disabled={isBusy} style={{ background: 'none', border: 'none', color: '#8E8E93', cursor: 'pointer', fontSize: 18 }}>✕</button>
           </div>
           <div style={{ color: '#8E8E93', fontSize: 12 }}>
             {stations.length} punto{stations.length !== 1 ? 's' : ''}
@@ -715,7 +707,7 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onClearAll }
           
           {stations.length > 0 && (
             <div style={{ marginTop: 24, textAlign: 'center' }}>
-              <button onClick={() => setClearModalOpen(true)} disabled={isExporting} style={{
+              <button onClick={() => setClearModalOpen(true)} disabled={isBusy} style={{
                 background: 'none', border: 'none', color: '#7f1d1d', textDecoration: 'underline',
                 fontSize: 12, cursor: 'pointer', fontFamily: 'Inter, sans-serif'
               }}>Limpiar campaña (Eliminar todo)</button>
@@ -724,17 +716,30 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onClearAll }
         </div>
 
         {stations.length > 0 && (
-          <div style={{ padding: '12px 16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-            <button onClick={onExport} disabled={isExporting} style={{
+          <div style={{ padding: '12px 16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* NUEVO BOTON CLOUD SYNC */}
+            <button onClick={onCloudSync} disabled={isBusy} style={{
               width: '100%', padding: '13px', borderRadius: 12,
-              background: isExporting ? '#333' : 'linear-gradient(135deg, #B91C1C, #7f1d1d)',
-              border: '1px solid rgba(212,175,55,0.3)',
-              color: isExporting ? '#888' : '#fff', fontSize: 13, fontWeight: 700,
-              cursor: isExporting ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
+              background: isBusy ? '#333' : 'linear-gradient(135deg, #10B981, #047857)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              color: isBusy ? '#888' : '#fff', fontSize: 13, fontWeight: 700,
+              cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               transition: 'all 0.3s'
             }}>
-              {isExporting ? '⏳ Generando archivo ZIP...' : '📦 Exportar Campaña ZIP'}
+              {isSyncing ? '⏳ Enviando a la Central...' : '☁️ Sincronizar a la Nube'}
+            </button>
+            
+            <button onClick={onExport} disabled={isBusy} style={{
+              width: '100%', padding: '13px', borderRadius: 12,
+              background: isBusy ? '#333' : 'transparent',
+              border: '1px solid rgba(212,175,55,0.3)',
+              color: isBusy ? '#888' : '#D4AF37', fontSize: 13, fontWeight: 600,
+              cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              transition: 'all 0.3s'
+            }}>
+              {isExporting ? '⏳ Generando ZIP...' : '📦 Guardar ZIP Localmente'}
             </button>
           </div>
         )}
@@ -764,16 +769,16 @@ export default function App() {
   const [showSidebar, setShowSidebar] = useState(false)
   const [mapCenter] = useState([-33.45, -70.65])
   const [activeLayer, setActiveLayer] = useState('osm')
+  
   const [isExporting, setIsExporting] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
 
-  // ─── Persistencia con localForage (Antigravity Checklist: Inmutabilidad) ───
   useEffect(() => {
     async function loadData() {
       try {
         const stored = await localforage.getItem('geoinducta_stations')
         if (stored && Array.isArray(stored)) {
-          // Regenerar URLs de blob que se pierden al recargar
           const restored = stored.map(s => ({
             ...s,
             muestras: s.muestras.map(m => ({
@@ -798,7 +803,6 @@ export default function App() {
   const saveStations = async (newStationsOrFn) => {
     setStations(prev => {
       const nextStations = typeof newStationsOrFn === 'function' ? newStationsOrFn(prev) : newStationsOrFn
-      // Guardar asíncronamente
       localforage.setItem('geoinducta_stations', nextStations).catch(e => console.error('Save error', e))
       return nextStations
     })
@@ -825,78 +829,81 @@ export default function App() {
     saveStations([])
   }, [])
 
-  const handleExport = useCallback(async () => {
-    setIsExporting(true) // Antigravity Checklist: Bloqueo de UI
-    try {
-      const { default: JSZip } = await import('jszip')
-      const zip = new JSZip()
-      const fotosDir  = zip.folder('fotos')
-      const audiosDir = zip.folder('audios')
+  // ─── CORE ZIP GENERATOR ───
+  const generateZipBlob = async () => {
+    const { default: JSZip } = await import('jszip')
+    const zip = new JSZip()
+    const fotosDir  = zip.folder('fotos')
+    const audiosDir = zip.folder('audios')
 
-      // ── GeoJSON ──
-      const features = stations.flatMap(s =>
-        s.muestras.map(m => {
-          const altStr = Object.entries(m.alteracion)
-            .filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join('; ')
-          return {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [s.position.lng, s.position.lat] },
-            properties: {
-              CP: m.cp, IDSAMPLE: m.idSample,
-              Elevation: m.elevation, Xm: m.xm, Ym: m.ym,
-              From: m.from, To: m.to,
-              HORIZONTE: m.horizonte, 'ROCA CAJA': m.rocaCaja,
-              ESTRUCTURA: m.estructura, RUMBO: m.rumbo, MANTEO: m.manteo,
-              MINERALOGÍA: (m.mineralogia || []).join('; '),
-              ALTERACION: altStr,
-              MINERALIZACION: m.mineralizacion,
-              COMENTARIO: m.comentario,
-              'TAKEN BY': m.takenBy, SEMANA: m.semana,
-              Lat: s.position.lat, Lng: s.position.lng, Fecha: s.createdAt,
-            }
-          }
-        })
-      )
-      zip.file('muestras.geojson', JSON.stringify({ type: 'FeatureCollection', features }, null, 2))
-
-      // ── TSV ──
-      const COLS = [
-        'CP', 'IDSAMPLE', 'Elevation', 'Xm', 'Ym', 'From', 'To',
-        'HORIZONTE', 'ROCA CAJA', 'ESTRUCTURA', 'RUMBO', 'MANTEO',
-        'MINERALOGÍA', 'ALTERACION', 'MINERALIZACION', 'COMENTARIO',
-        'TAKEN BY', 'SEMANA', 'Lat', 'Lng', 'Fecha',
-      ]
-      const rows = [COLS.join('\t')]
-      stations.forEach(s => s.muestras.forEach(m => {
+    const features = stations.flatMap(s =>
+      s.muestras.map(m => {
         const altStr = Object.entries(m.alteracion)
           .filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join('; ')
-        rows.push([
-          m.cp, m.idSample, m.elevation, m.xm, m.ym, m.from, m.to,
-          m.horizonte, m.rocaCaja, m.estructura, m.rumbo, m.manteo,
-          (m.mineralogia || []).join('; '), altStr, m.mineralizacion,
-          `"${(m.comentario || '').replace(/"/g, '""')}"`,
-          m.takenBy, m.semana,
-          s.position.lat, s.position.lng, s.createdAt,
-        ].join('\t'))
-      }))
-      zip.file('muestras.tsv', rows.join('\n'))
-
-      // ── Fotos & audios ──
-      for (const s of stations) {
-        for (const m of s.muestras) {
-          const prefix = `${m.cp || 'CP'}_${m.idSample || 'S'}`
-          if (m.fotos?.length) {
-            m.fotos.forEach((f, i) => {
-              if (f.file) fotosDir.file(`${prefix}_foto_${i + 1}.jpg`, f.file)
-            })
-          }
-          if (m.audioBlob) {
-            audiosDir.file(`${prefix}_audio.webm`, m.audioBlob)
+        return {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [s.position.lng, s.position.lat] },
+          properties: {
+            CP: m.cp, IDSAMPLE: m.idSample,
+            Elevation: m.elevation, Xm: m.xm, Ym: m.ym,
+            From: m.from, To: m.to,
+            HORIZONTE: m.horizonte, 'ROCA CAJA': m.rocaCaja,
+            ESTRUCTURA: m.estructura, RUMBO: m.rumbo, MANTEO: m.manteo,
+            MINERALOGÍA: (m.mineralogia || []).join('; '),
+            ALTERACION: altStr,
+            MINERALIZACION: m.mineralizacion,
+            COMENTARIO: m.comentario,
+            'TAKEN BY': m.takenBy, SEMANA: m.semana,
+            Lat: s.position.lat, Lng: s.position.lng, Fecha: s.createdAt,
           }
         }
-      }
+      })
+    )
+    zip.file('muestras.geojson', JSON.stringify({ type: 'FeatureCollection', features }, null, 2))
 
-      const blob = await zip.generateAsync({ type: 'blob' })
+    const COLS = [
+      'CP', 'IDSAMPLE', 'Elevation', 'Xm', 'Ym', 'From', 'To',
+      'HORIZONTE', 'ROCA CAJA', 'ESTRUCTURA', 'RUMBO', 'MANTEO',
+      'MINERALOGÍA', 'ALTERACION', 'MINERALIZACION', 'COMENTARIO',
+      'TAKEN BY', 'SEMANA', 'Lat', 'Lng', 'Fecha',
+    ]
+    const rows = [COLS.join('\t')]
+    stations.forEach(s => s.muestras.forEach(m => {
+      const altStr = Object.entries(m.alteracion)
+        .filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join('; ')
+      rows.push([
+        m.cp, m.idSample, m.elevation, m.xm, m.ym, m.from, m.to,
+        m.horizonte, m.rocaCaja, m.estructura, m.rumbo, m.manteo,
+        (m.mineralogia || []).join('; '), altStr, m.mineralizacion,
+        `"${(m.comentario || '').replace(/"/g, '""')}"`,
+        m.takenBy, m.semana,
+        s.position.lat, s.position.lng, s.createdAt,
+      ].join('\t'))
+    }))
+    zip.file('muestras.tsv', rows.join('\n'))
+
+    for (const s of stations) {
+      for (const m of s.muestras) {
+        const prefix = `${m.cp || 'CP'}_${m.idSample || 'S'}`
+        if (m.fotos?.length) {
+          m.fotos.forEach((f, i) => {
+            if (f.file) fotosDir.file(`${prefix}_foto_${i + 1}.jpg`, f.file)
+          })
+        }
+        if (m.audioBlob) {
+          audiosDir.file(`${prefix}_audio.webm`, m.audioBlob)
+        }
+      }
+    }
+
+    return await zip.generateAsync({ type: 'blob' })
+  }
+
+  // ─── LOCAL EXPORT ───
+  const handleExport = useCallback(async () => {
+    setIsExporting(true)
+    try {
+      const blob = await generateZipBlob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -905,11 +912,48 @@ export default function App() {
       URL.revokeObjectURL(url)
     } catch (err) {
       console.error("Export error", err)
-      alert("Error al exportar los datos.")
+      alert("Error al generar el ZIP local.")
     } finally {
       setIsExporting(false)
     }
   }, [stations])
+
+  // ─── CLOUD SYNC (Universal Webhook) ───
+  const handleCloudSync = useCallback(async () => {
+    const webhookUrl = import.meta.env.VITE_CLOUD_SYNC_WEBHOOK
+    if (!webhookUrl) {
+      alert("⚠️ El sistema no tiene configurada la URL de la Central (Webhook). Contacta al administrador para configurar VITE_CLOUD_SYNC_WEBHOOK.")
+      return
+    }
+
+    setIsSyncing(true)
+    try {
+      const blob = await generateZipBlob()
+      const formData = new FormData()
+      
+      const fileName = `campana_GeoINducta_${new Date().toISOString().slice(0, 10)}.zip`
+      formData.append('file', blob, fileName)
+      
+      // Metadata extra para el backend
+      formData.append('geologist', stations[0]?.muestras[0]?.takenBy || 'Desconocido')
+      formData.append('pointsCount', stations.length)
+      
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+      
+      alert("✅ ¡Sincronización Exitosa!\n\nLos datos han sido enviados a la Central y estarán disponibles en el Drive/Correo corporativo.")
+    } catch (err) {
+      console.error("Cloud sync error", err)
+      alert("❌ Error al enviar a la nube.\n\nVerifica que tienes conexión a internet (3G/4G/WiFi) y vuelve a intentarlo. Tus datos están seguros en el dispositivo.")
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [stations])
+
 
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
 
@@ -917,7 +961,6 @@ export default function App() {
 
   return (
     <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
-      {/* Top Bar */}
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
         background: 'rgba(10,10,11,0.92)', backdropFilter: 'blur(16px)',
@@ -948,7 +991,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Map */}
       <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
         <TileLayer
           key={activeLayer}
@@ -988,7 +1030,6 @@ export default function App() {
         <RecenterButton position={gpsPosition} />
       </MapContainer>
 
-      {/* Selector de capas adaptado al diseño */}
       <div style={{ position: 'fixed', bottom: 96, left: 12, zIndex: 999 }}>
         <select value={activeLayer} onChange={e => setActiveLayer(e.target.value)} style={{
           background: 'rgba(10,10,11,0.9)', color: '#fff', border: '1px solid rgba(212,175,55,0.3)',
@@ -1006,6 +1047,8 @@ export default function App() {
           onClose={() => setShowSidebar(false)}
           onExport={handleExport}
           isExporting={isExporting}
+          onCloudSync={handleCloudSync}
+          isSyncing={isSyncing}
           onClearAll={handleClearAll}
         />
       )}
@@ -1030,7 +1073,6 @@ export default function App() {
         </div>
       )}
 
-      {/* GPS button */}
       <button onClick={() => {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(

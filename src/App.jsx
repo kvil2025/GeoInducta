@@ -121,6 +121,12 @@ const labelSt = {
 
 // ─── COMPONENTS ──────────────────────────────────────────────────────────────
 function GPSTracker({ onPosition }) {
+  const map = useMap()
+  
+  useEffect(() => {
+    map.locate({ setView: true, maxZoom: 16 })
+  }, [map])
+
   useMapEvents({
     locationfound(e) { onPosition(e.latlng) },
     locationerror() { console.warn('GPS no disponible') },

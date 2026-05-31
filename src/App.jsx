@@ -492,8 +492,8 @@ function MuestraForm({ muestra, index, onChange, onRemove, canRemove }) {
   )
 }
 
-function PuntoForm({ position, onSave, onClose }) {
-  const [muestras, setMuestras] = useState([newMuestra()])
+function PuntoForm({ position, onSave, onClose, initialData }) {
+  const [muestras, setMuestras] = useState(initialData ? initialData.muestras : [newMuestra()])
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [muestraToDelete, setMuestraToDelete] = useState(null)
 
@@ -515,7 +515,12 @@ function PuntoForm({ position, onSave, onClose }) {
   const handleSave = () => {
     const invalid = muestras.find(m => !m.cp || !m.idSample)
     if (invalid) { alert('Cada muestra requiere CP e IDSAMPLE'); return }
-    onSave({ id: generateId(), position, muestras, createdAt: new Date().toISOString() })
+    onSave({
+      id: initialData ? initialData.id : generateId(),
+      position: initialData ? initialData.position : position,
+      muestras,
+      createdAt: initialData ? initialData.createdAt : new Date().toISOString()
+    })
   }
 
   return (
@@ -580,7 +585,7 @@ function PuntoForm({ position, onSave, onClose }) {
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
@@ -620,8 +625,8 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
                 background: '#1A1A1C', borderRadius: 12, padding: '12px 14px',
                 marginBottom: 8, border: '1px solid rgba(212,175,55,0.12)',
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
                     {s.muestras.slice(0, 2).map((m, j) => (
                       <span key={j} style={{
                         padding: '2px 8px', borderRadius: 6, fontSize: 11, background: 'rgba(212,175,55,0.1)', color: '#D4AF37',
@@ -634,7 +639,14 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
                       }}>+{s.muestras.length - 2}</span>
                     )}
                   </div>
-                  <span style={{ color: '#555', fontSize: 10 }}>#{i + 1}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                    <span style={{ color: '#555', fontSize: 10 }}>#{i + 1}</span>
+                    <button onClick={() => onEditStation(s)} disabled={isBusy} style={{
+                      background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.3)',
+                      color: '#D4AF37', borderRadius: 6, padding: '3px 8px', fontSize: 11,
+                      cursor: 'pointer', fontFamily: 'Inter, sans-serif'
+                    }}>✏️ Editar</button>
+                  </div>
                 </div>
                 {s.muestras[0]?.horizonte && (
                   <div style={{ fontSize: 11, color: '#aaa', marginBottom: 3 }}>{s.muestras[0].horizonte}</div>
@@ -719,6 +731,7 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
 export default function App() {
   const [stations, setStations] = useState([])
   const [showForm, setShowForm] = useState(false)
+  const [editingStation, setEditingStation] = useState(null)
   const [clickPosition, setClickPosition] = useState(null)
   const [gpsPosition, setGpsPosition] = useState(null)
   const [showSidebar, setShowSidebar] = useState(false)
@@ -777,6 +790,7 @@ export default function App() {
     useMapEvents({
       click(e) {
         setClickPosition(e.latlng)
+        setEditingStation(null)
         setShowForm(true)
         setShowSidebar(false)
       }
@@ -785,8 +799,17 @@ export default function App() {
   }
 
   const handleSavePunto = useCallback((punto) => {
-    saveStations(prev => [...prev, punto])
+    saveStations(prev => {
+      const idx = prev.findIndex(p => p.id === punto.id)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = punto
+        return next
+      }
+      return [...prev, punto]
+    })
     setShowForm(false)
+    setEditingStation(null)
     setClickPosition(null)
   }, [])
 
@@ -899,6 +922,17 @@ export default function App() {
         mimeType: 'application/zip'
       }
 
+      // 1. Search if file already exists for today
+      const query = encodeURIComponent(`name='${metadata.name}' and trashed=false`)
+      const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&spaces=drive`, {
+        headers: { 'Authorization': `Bearer ${driveToken}` }
+      })
+      const searchData = await searchRes.json()
+      
+      if (searchData.error) throw new Error(searchData.error.message)
+
+      const existingFileId = searchData.files && searchData.files.length > 0 ? searchData.files[0].id : null
+
       // We construct the multipart/related body manually
       const multipartRequestBody = new Blob([
         delimiter,
@@ -910,8 +944,16 @@ export default function App() {
         close_delim
       ])
 
-      const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
+      let uploadUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
+      let uploadMethod = 'POST'
+
+      if (existingFileId) {
+        uploadUrl = `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart`
+        uploadMethod = 'PATCH'
+      }
+
+      const response = await fetch(uploadUrl, {
+        method: uploadMethod,
         headers: {
           'Authorization': `Bearer ${driveToken}`,
           'Content-Type': `multipart/related; boundary=${boundary}`
@@ -1033,14 +1075,20 @@ export default function App() {
           onClearAll={handleClearAll}
           driveToken={driveToken}
           loginToDrive={loginToDrive}
+          onEditStation={(s) => {
+            setEditingStation(s)
+            setShowForm(true)
+            setShowSidebar(false)
+          }}
         />
       )}
 
       {showForm && (
         <PuntoForm
           position={clickPosition}
+          initialData={editingStation}
           onSave={handleSavePunto}
-          onClose={() => { setShowForm(false); setClickPosition(null) }}
+          onClose={() => { setShowForm(false); setEditingStation(null); setClickPosition(null) }}
         />
       )}
 

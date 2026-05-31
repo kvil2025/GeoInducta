@@ -3,115 +3,152 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 're
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-// ── Tile layer definitions ──
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const TILE_LAYERS = {
   osm: {
-    name: 'Calles',
-    icon: '🗺️',
+    name: 'Calles', icon: '🗺️',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-    maxZoom: 19,
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>', maxZoom: 19,
   },
   topo: {
-    name: 'Topográfico',
-    icon: '🏔️',
+    name: 'Topográfico', icon: '🏔️',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution: '© <a href="https://opentopomap.org">OpenTopoMap</a> | © <a href="https://openstreetmap.org">OSM</a>',
-    maxZoom: 17,
+    attribution: '© <a href="https://opentopomap.org">OpenTopoMap</a>', maxZoom: 17,
   },
   satellite: {
-    name: 'Satelital',
-    icon: '🛰️',
+    name: 'Satelital', icon: '🛰️',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '© <a href="https://www.esri.com">Esri</a> | Maxar, Earthstar Geographics',
-    maxZoom: 19,
+    attribution: '© <a href="https://www.esri.com">Esri</a>', maxZoom: 19,
   },
 }
 
-// Opciones geológicas del dominio
-const HORIZONTES = ['Óxidos', 'Sulfuros secundarios', 'Sulfuros primarios', 'Zona de lixiviación', 'Sin definir']
-const ROCAS_CAJA = ['Granodiorita', 'Tonalita', 'Pórfido cuarzo-feldespático', 'Andesita', 'Brecha', 'Skarn', 'Mármol', 'Cuarcita', 'Otro']
-const ESTRUCTURAS_OPTS = ['Falla', 'Diaclasa', 'Veta', 'Vetilla', 'Brecha estructural', 'Foliación', 'Cizalle', 'Sin estructura', 'Otro']
-const MINERALES_OPTS = ['Calcopirita', 'Bornita', 'Calcocita', 'Covelina', 'Malaquita', 'Azurita', 'Pirita', 'Molibdenita', 'Magnetita', 'Hematita', 'Limonita', 'Cuarzo', 'Otro']
-const ALTERACIONES_OPTS = ['Potásica', 'Fílica', 'Argílica', 'Propilítica', 'Argilización avanzada', 'Silicificación', 'Cloritización', 'Sin alteración', 'Otro']
-const MINERALIZACIONES_OPTS = ['Alta', 'Media', 'Baja', 'Estéril', 'Sin definir']
+const HORIZONTES = [
+  'Pedolito Superior', 'Pedolito Inferior', 'Pedolito Sup / Inf',
+  'Saprolito Superior', 'Saprolito Inferior', 'Saprolito Sup / Inf',
+  'Pedolito / Saprolito', 'Roca Fresca', 'Sin definir',
+]
 
-// Fix leaflet default icon
+const ROCAS_CAJA = [
+  'Granodiorita', 'Tonalita', 'Pórfido Q-Fsp', 'Andesita',
+  'Brecha', 'Skarn', 'Mármol', 'Cuarcita', 'Otro',
+]
+
+const ESTRUCTURAS = [
+  'Falla', 'Diaclasa', 'Veta', 'Vetilla',
+  'Brecha estructural', 'Foliación', 'Cizalle', 'Sin estructura', 'Otro',
+]
+
+const MINERALOGIA_OPTS = [
+  'Calcopirita', 'Bornita', 'Calcocita', 'Covelina',
+  'Malaquita', 'Azurita', 'Pirita', 'Molibdenita',
+  'Magnetita', 'Hematita', 'Limonita', 'Cuarzo', 'Otro',
+]
+
+const MINERALIZACION_OPTS = ['Alta', 'Media', 'Baja', 'Estéril', 'Sin definir']
+
+const ALT_MINERALES = ['Kaolín', 'FeOx', 'Qz', 'Biotita', 'Muscovita']
+const GRADOS        = ['--', '-', '+-', '+', '++']
+const GRADO_COLOR   = { '--': '#6B7280', '-': '#60A5FA', '+-': '#FBBF24', '+': '#F97316', '++': '#EF4444' }
+const GRADO_LABEL   = { '--': 'Muy débil', '-': 'Débil', '+-': 'Moderado', '+': 'Fuerte', '++': 'Muy fuerte' }
+
+// ─── LEAFLET ICON FIX ────────────────────────────────────────────────────────
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-// Custom geological station icon — color según horizonte
-const createStationIcon = (horizonte) => {
-  const colors = {
-    'Óxidos': '#F59E0B',
-    'Sulfuros secundarios': '#3B82F6',
-    'Sulfuros primarios': '#8B5CF6',
-    'Zona de lixiviación': '#22C55E',
-  }
-  const color = colors[horizonte] || '#B91C1C'
+// ─── ICONS ───────────────────────────────────────────────────────────────────
+const createStationIcon = (muestras) => {
+  const h = muestras[0]?.horizonte || ''
+  const color = h.includes('Pedolito') ? '#F59E0B'
+    : h.includes('Saprolito') ? '#8B5CF6'
+    : h === 'Roca Fresca' ? '#3B82F6'
+    : '#B91C1C'
+  const count = muestras.length
   return L.divIcon({
     className: '',
-    html: `<div style="
-      width:28px;height:28px;border-radius:50% 50% 50% 0;
-      background:${color};border:2.5px solid #D4AF37;
-      transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.4);
-    "></div>`,
-    iconSize: [28, 28],
+    html: `<div style="position:relative;width:32px;height:32px;">
+      <div style="width:28px;height:28px;border-radius:50% 50% 50% 0;
+        background:${color};border:2.5px solid #D4AF37;transform:rotate(-45deg);
+        box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>
+      ${count > 1 ? `<div style="position:absolute;top:-5px;right:-5px;
+        width:17px;height:17px;border-radius:50%;background:#D4AF37;color:#000;
+        font-size:9px;font-weight:800;display:flex;align-items:center;
+        justify-content:center;font-family:Inter,sans-serif;">${count}</div>` : ''}
+    </div>`,
+    iconSize: [32, 32],
     iconAnchor: [14, 28],
   })
 }
 
-// GPS position icon
 const gpsIcon = L.divIcon({
   className: '',
-  html: `<div style="
-    width:16px;height:16px;border-radius:50%;
-    background:#3B82F6;border:3px solid #fff;
-    box-shadow:0 0 0 4px rgba(59,130,246,0.3);
-  "></div>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
+  html: `<div style="width:16px;height:16px;border-radius:50%;background:#3B82F6;
+    border:3px solid #fff;box-shadow:0 0 0 4px rgba(59,130,246,0.3);"></div>`,
+  iconSize: [16, 16], iconAnchor: [8, 8],
 })
 
-// ── GPS Tracker component ──
+// ─── BLANK MUESTRA ────────────────────────────────────────────────────────────
+let _uid = 0
+const newMuestra = () => ({
+  _id: ++_uid,
+  cp: '', idSample: '', elevation: '', xm: '', ym: '', from: '', to: '',
+  horizonte: '', rocaCaja: '', estructura: '', rumbo: '', manteo: '',
+  mineralogia: [],
+  alteracion: { Kaolín: null, FeOx: null, Qz: null, Biotita: null, Muscovita: null },
+  mineralizacion: '', comentario: '', takenBy: '', semana: '',
+  fotos: [],      // [{ file: File, url: string }]
+  audioBlob: null,
+})
+
+// ─── SHARED STYLES ────────────────────────────────────────────────────────────
+const inputSt = {
+  width: '100%', padding: '8px 10px', borderRadius: 8,
+  background: '#111113', border: '1px solid rgba(255,255,255,0.1)',
+  color: '#fff', fontSize: 13, fontFamily: 'Inter, sans-serif',
+  outline: 'none', boxSizing: 'border-box',
+}
+const labelSt = {
+  display: 'block', fontSize: 10, color: '#8E8E93',
+  fontWeight: 600, letterSpacing: '0.08em', marginBottom: 4,
+  fontFamily: 'Inter, sans-serif',
+}
+
+// ─── GPS TRACKER ──────────────────────────────────────────────────────────────
 function GPSTracker({ onPosition }) {
   useMapEvents({
     locationfound(e) { onPosition(e.latlng) },
-    locationerror() { console.warn('GPS no disponible') }
+    locationerror() { console.warn('GPS no disponible') },
   })
   return null
 }
 
-// ── Layer Switcher ──
+// ─── LAYER SWITCHER ───────────────────────────────────────────────────────────
 function LayerSwitcher({ activeLayer, onChange }) {
   const [open, setOpen] = useState(false)
-  const layer = TILE_LAYERS[activeLayer]
   return (
     <div style={{ position: 'fixed', bottom: 96, left: 12, zIndex: 999 }}>
       {open && (
         <div className="fade-in" style={{
           position: 'absolute', bottom: 52, left: 0,
-          background: 'rgba(10,10,11,0.95)', backdropFilter: 'blur(16px)',
+          background: 'rgba(10,10,11,0.97)', backdropFilter: 'blur(16px)',
           border: '1px solid rgba(212,175,55,0.3)', borderRadius: 14,
           overflow: 'hidden', minWidth: 160,
         }}>
           {Object.entries(TILE_LAYERS).map(([key, l]) => (
-            <button key={key} onClick={() => { onChange(key); setOpen(false) }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                width: '100%', padding: '11px 16px',
-                border: 'none', cursor: 'pointer', textAlign: 'left',
-                color: activeLayer === key ? '#D4AF37' : '#fff',
-                fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: activeLayer === key ? 700 : 400,
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
-                background: activeLayer === key ? 'rgba(212,175,55,0.08)' : 'transparent',
-              }}>
-              <span style={{ fontSize: 18 }}>{l.icon}</span>
-              {l.name}
+            <button key={key} onClick={() => { onChange(key); setOpen(false) }} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              width: '100%', padding: '11px 16px',
+              border: 'none', cursor: 'pointer', textAlign: 'left',
+              color: activeLayer === key ? '#D4AF37' : '#fff',
+              fontFamily: 'Inter, sans-serif', fontSize: 13,
+              fontWeight: activeLayer === key ? 700 : 400,
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              background: activeLayer === key ? 'rgba(212,175,55,0.08)' : 'transparent',
+            }}>
+              <span style={{ fontSize: 18 }}>{l.icon}</span>{l.name}
               {activeLayer === key && <span style={{ marginLeft: 'auto', color: '#D4AF37' }}>✓</span>}
             </button>
           ))}
@@ -122,91 +159,209 @@ function LayerSwitcher({ activeLayer, onChange }) {
         background: open ? 'rgba(212,175,55,0.15)' : 'rgba(10,10,11,0.9)',
         border: `1px solid ${open ? '#D4AF37' : 'rgba(212,175,55,0.3)'}`,
         color: open ? '#D4AF37' : '#fff', fontSize: 20, cursor: 'pointer',
-        backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.2s',
-      }} title={`Capa: ${layer.name}`}>
-        {layer.icon}
+        backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', transition: 'all 0.2s',
+      }} title={`Capa: ${TILE_LAYERS[activeLayer].name}`}>
+        {TILE_LAYERS[activeLayer].icon}
       </button>
     </div>
   )
 }
 
-// ── Recenter map button ──
+// ─── RECENTER BUTTON ─────────────────────────────────────────────────────────
 function RecenterButton({ position }) {
   const map = useMap()
   if (!position) return null
   return (
-    <button
-      onClick={() => map.flyTo(position, 16)}
-      style={{
-        position: 'absolute', bottom: 100, right: 12, zIndex: 999,
-        background: 'rgba(10,10,11,0.9)', border: '1px solid rgba(212,175,55,0.3)',
-        color: '#fff', borderRadius: '50%', width: 44, height: 44,
-        cursor: 'pointer', fontSize: 18, backdropFilter: 'blur(8px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center'
-      }}
-      title="Ir a mi posición"
-    >📍</button>
+    <button onClick={() => map.flyTo(position, 16)} style={{
+      position: 'absolute', bottom: 100, right: 12, zIndex: 999,
+      background: 'rgba(10,10,11,0.9)', border: '1px solid rgba(212,175,55,0.3)',
+      color: '#fff', borderRadius: '50%', width: 44, height: 44,
+      cursor: 'pointer', fontSize: 18, backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} title="Ir a mi posición">📍</button>
   )
 }
 
-// ── Multi-select chip button ──
-function ChipSelect({ options, value, onChange, color = '#B91C1C' }) {
+// ─── CHIP SELECT ──────────────────────────────────────────────────────────────
+function ChipSelect({ options, value, onChange, multi = false, color = '#B91C1C' }) {
+  const toggle = (opt) => {
+    if (multi) {
+      const arr = value || []
+      onChange(arr.includes(opt) ? arr.filter(v => v !== opt) : [...arr, opt])
+    } else {
+      onChange(value === opt ? '' : opt)
+    }
+  }
+  const sel = (opt) => multi ? (value || []).includes(opt) : value === opt
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-      {options.map(opt => {
-        const isArr = Array.isArray(value)
-        const selected = isArr ? value.includes(opt) : value === opt
-        return (
-          <button key={opt} onClick={() => {
-            if (isArr) {
-              onChange(selected ? value.filter(v => v !== opt) : [...value, opt])
-            } else {
-              onChange(selected ? '' : opt)
-            }
-          }} style={{
-            padding: '6px 12px', borderRadius: 8, fontSize: 12,
-            border: `1.5px solid ${selected ? color : 'rgba(255,255,255,0.12)'}`,
-            background: selected ? `${color}22` : '#1A1A1C',
-            color: selected ? '#fff' : '#8E8E93',
-            cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-            fontWeight: selected ? 600 : 400, transition: 'all 0.15s',
-          }}>
-            {opt}
-          </button>
-        )
-      })}
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+      {options.map(opt => (
+        <button key={opt} onClick={() => toggle(opt)} style={{
+          padding: '5px 11px', borderRadius: 8, fontSize: 12,
+          border: `1.5px solid ${sel(opt) ? color : 'rgba(255,255,255,0.12)'}`,
+          background: sel(opt) ? `${color}22` : '#1A1A1C',
+          color: sel(opt) ? '#fff' : '#8E8E93',
+          cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+          fontWeight: sel(opt) ? 600 : 400, transition: 'all 0.15s',
+        }}>{opt}</button>
+      ))}
     </div>
   )
 }
 
-// ── Station Form Panel ──
-function StationForm({ position, onSave, onClose }) {
-  // Identificación
-  const [cp, setCp] = useState('')
-  const [semana, setSemana] = useState('')
-  const [idSample, setIdSample] = useState('')
-  // Posición
-  const [elevation, setElevation] = useState('')
-  const [xm, setXm] = useState(position ? position.lng.toFixed(2) : '')
-  const [ym, setYm] = useState(position ? position.lat.toFixed(2) : '')
-  // Profundidad
-  const [fromM, setFromM] = useState('')
-  const [toM, setToM] = useState('')
-  // Geología
-  const [horizonte, setHorizonte] = useState('')
-  const [rocaCaja, setRocaCaja] = useState('')
-  const [estructura, setEstructura] = useState('')
-  const [rumbo, setRumbo] = useState('')
-  const [manteo, setManteo] = useState('')
-  // Mineralogía
-  const [minerales, setMinerales] = useState([])
-  const [alteracion, setAlteracion] = useState('')
-  const [mineraliza, setMineraliza] = useState('')
-  const [comentario, setComentario] = useState('')
-  // Audio
+// ─── ALTERACION SELECTOR ─────────────────────────────────────────────────────
+function AlteracionSelector({ value, onChange }) {
+  const toggle = (mineral, grado) =>
+    onChange({ ...value, [mineral]: value[mineral] === grado ? null : grado })
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+        {GRADOS.map(g => (
+          <span key={g} style={{
+            fontSize: 10, color: GRADO_COLOR[g], fontFamily: 'monospace',
+            background: `${GRADO_COLOR[g]}18`, border: `1px solid ${GRADO_COLOR[g]}44`,
+            borderRadius: 6, padding: '2px 7px',
+          }}>{g} {GRADO_LABEL[g]}</span>
+        ))}
+      </div>
+      {ALT_MINERALES.map(mineral => (
+        <div key={mineral} style={{
+          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+          padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
+        }}>
+          <span style={{
+            width: 68, fontSize: 12, flexShrink: 0, fontFamily: 'Inter, sans-serif',
+            color: value[mineral] ? '#fff' : '#8E8E93', fontWeight: value[mineral] ? 600 : 400,
+          }}>{mineral}</span>
+          <div style={{ display: 'flex', gap: 5, flex: 1 }}>
+            {GRADOS.map(g => {
+              const active = value[mineral] === g
+              return (
+                <button key={g} onClick={() => toggle(mineral, g)} title={GRADO_LABEL[g]} style={{
+                  flex: 1, height: 30, borderRadius: 7, fontSize: 11, fontWeight: 700,
+                  border: `1.5px solid ${active ? GRADO_COLOR[g] : 'rgba(255,255,255,0.1)'}`,
+                  background: active ? `${GRADO_COLOR[g]}30` : '#111113',
+                  color: active ? GRADO_COLOR[g] : '#555',
+                  cursor: 'pointer', fontFamily: 'monospace', transition: 'all 0.15s',
+                  minWidth: 32,
+                }}>{g}</button>
+              )
+            })}
+          </div>
+          {value[mineral] && (
+            <span style={{ fontSize: 9, color: GRADO_COLOR[value[mineral]], width: 52, flexShrink: 0 }}>
+              {GRADO_LABEL[value[mineral]]}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── FOTO GALERÍA ─────────────────────────────────────────────────────────────
+function FotoGaleria({ fotos, onChange }) {
+  const inputRef = useRef(null)
+  const [lightbox, setLightbox] = useState(null)
+
+  const handleFiles = (e) => {
+    const files = Array.from(e.target.files)
+    const nuevas = files.map(f => ({ file: f, url: URL.createObjectURL(f) }))
+    onChange([...fotos, ...nuevas])
+    e.target.value = ''
+  }
+
+  const remove = (idx) => {
+    URL.revokeObjectURL(fotos[idx].url)
+    onChange(fotos.filter((_, i) => i !== idx))
+  }
+
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+        {fotos.map((f, i) => (
+          <div key={i} style={{ position: 'relative', width: 76, height: 76, flexShrink: 0 }}>
+            <img
+              src={f.url} alt={`foto ${i + 1}`}
+              onClick={() => setLightbox(f.url)}
+              style={{
+                width: '100%', height: '100%', objectFit: 'cover',
+                borderRadius: 10, cursor: 'zoom-in',
+                border: '1.5px solid rgba(212,175,55,0.3)',
+              }}
+            />
+            <button onClick={() => remove(i)} style={{
+              position: 'absolute', top: -7, right: -7,
+              width: 20, height: 20, borderRadius: '50%',
+              background: '#B91C1C', border: '2px solid #0a0a0b',
+              color: '#fff', fontSize: 9, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800,
+            }}>✕</button>
+          </div>
+        ))}
+        <button onClick={() => inputRef.current.click()} style={{
+          width: 76, height: 76, borderRadius: 10, flexShrink: 0,
+          border: '1.5px dashed rgba(212,175,55,0.4)',
+          background: 'rgba(212,175,55,0.04)',
+          color: '#D4AF37', cursor: 'pointer',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 4, fontFamily: 'Inter, sans-serif', fontSize: 10,
+          transition: 'background 0.2s',
+        }}>
+          <span style={{ fontSize: 22 }}>📸</span>Foto
+        </button>
+      </div>
+      <input
+        ref={inputRef} type="file" accept="image/*"
+        capture="environment" multiple onChange={handleFiles}
+        style={{ display: 'none' }}
+      />
+      {lightbox && (
+        <div onClick={() => setLightbox(null)} style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.93)', backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'zoom-out',
+        }}>
+          <img src={lightbox} alt="ampliada" style={{
+            maxWidth: '96vw', maxHeight: '90vh',
+            borderRadius: 14, objectFit: 'contain',
+          }} />
+          <button onClick={() => setLightbox(null)} style={{
+            position: 'absolute', top: 16, right: 16,
+            background: 'rgba(255,255,255,0.12)', border: 'none',
+            color: '#fff', borderRadius: '50%', width: 42, height: 42,
+            cursor: 'pointer', fontSize: 18,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>✕</button>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ─── SECTION LABEL ────────────────────────────────────────────────────────────
+function SectionLabel({ icon, text }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 7,
+      margin: '16px 0 9px', paddingBottom: 6,
+      borderBottom: '1px solid rgba(212,175,55,0.12)',
+    }}>
+      <span style={{ fontSize: 13 }}>{icon}</span>
+      <span style={{ color: '#D4AF37', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', fontFamily: 'Inter, sans-serif' }}>{text}</span>
+    </div>
+  )
+}
+
+// ─── MUESTRA FORM ────────────────────────────────────────────────────────────
+function MuestraForm({ muestra, index, onChange, onRemove, canRemove }) {
+  const [expanded, setExpanded] = useState(index === 0)
   const [isRecording, setIsRecording] = useState(false)
-  const [audioBlob, setAudioBlob] = useState(null)
   const [blink, setBlink] = useState(false)
   const mediaRef = useRef(null)
   const blinkRef = useRef(null)
@@ -221,6 +376,8 @@ function StationForm({ position, onSave, onClose }) {
     return () => clearInterval(blinkRef.current)
   }, [isRecording])
 
+  const set = (field, val) => onChange({ ...muestra, [field]: val })
+
   const toggleRecording = async () => {
     if (isRecording) {
       mediaRef.current?.stop()
@@ -232,7 +389,7 @@ function StationForm({ position, onSave, onClose }) {
         const chunks = []
         recorder.ondataavailable = e => chunks.push(e.data)
         recorder.onstop = () => {
-          setAudioBlob(new Blob(chunks, { type: 'audio/webm' }))
+          set('audioBlob', new Blob(chunks, { type: 'audio/webm' }))
           stream.getTracks().forEach(t => t.stop())
         }
         recorder.start()
@@ -244,233 +401,333 @@ function StationForm({ position, onSave, onClose }) {
     }
   }
 
-  const handleSave = () => {
-    if (!cp) { alert('CP es requerido'); return }
-    if (!idSample) { alert('IDSAMPLE es requerido'); return }
-    onSave({
-      cp, semana, idSample,
-      elevation: parseFloat(elevation) || null,
-      xm: parseFloat(xm) || null,
-      ym: parseFloat(ym) || null,
-      from: parseFloat(fromM) || null,
-      to: parseFloat(toM) || null,
-      horizonte, rocaCaja, estructura,
-      rumbo: rumbo ? parseFloat(rumbo) : null,
-      manteo: manteo ? parseFloat(manteo) : null,
-      minerales: minerales.join('; '),
-      alteracion, mineraliza, comentario,
-      audioBlob, position,
-      createdAt: new Date().toISOString()
-    })
-  }
+  const summary = [muestra.cp, muestra.idSample, muestra.horizonte].filter(Boolean).join(' · ') || 'Sin datos'
+  const fotosCount = muestra.fotos?.length || 0
 
-  const sectionLabel = (text, icon) => (
+  return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      margin: '16px 0 10px', paddingBottom: 6,
-      borderBottom: '1px solid rgba(212,175,55,0.15)'
+      borderRadius: 14, marginBottom: 10, overflow: 'hidden',
+      border: `1px solid ${expanded ? 'rgba(212,175,55,0.35)' : 'rgba(255,255,255,0.07)'}`,
+      background: expanded ? 'rgba(12,12,14,0.9)' : '#0F0F11',
+      transition: 'border-color 0.2s',
     }}>
-      <span style={{ fontSize: 14 }}>{icon}</span>
-      <span style={{ color: '#D4AF37', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>{text}</span>
+      {/* Accordion header */}
+      <div onClick={() => setExpanded(e => !e)} style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 14px', cursor: 'pointer', userSelect: 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{
+            width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+            background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10, fontWeight: 800, color: '#D4AF37', fontFamily: 'Inter, sans-serif',
+          }}>{index + 1}</span>
+          <span style={{ fontSize: 12, color: expanded ? '#ddd' : '#8E8E93', fontFamily: 'Inter, sans-serif' }}>
+            {expanded ? 'MUESTRA' : summary}
+          </span>
+          {fotosCount > 0 && <span style={{ fontSize: 10, color: '#D4AF37' }}>📸 {fotosCount}</span>}
+          {muestra.audioBlob && <span style={{ fontSize: 10, color: '#22C55E' }}>🎙️</span>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {canRemove && (
+            <button onClick={e => { e.stopPropagation(); onRemove() }} style={{
+              background: 'none', border: 'none', color: '#7f1d1d',
+              cursor: 'pointer', fontSize: 15, padding: '2px 4px', lineHeight: 1,
+            }} title="Eliminar muestra">🗑️</button>
+          )}
+          <span style={{ color: '#555', fontSize: 12 }}>{expanded ? '▲' : '▼'}</span>
+        </div>
+      </div>
+
+      {/* Expanded fields */}
+      {expanded && (
+        <div style={{ padding: '0 14px 18px' }}>
+
+          {/* ── 1. IDENTIFICACIÓN ── */}
+          <SectionLabel icon="🏷️" text="IDENTIFICACIÓN" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+            <div>
+              <label style={labelSt}>CP *</label>
+              <input style={inputSt} placeholder="ej: CP-01" value={muestra.cp} onChange={e => set('cp', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelSt}>IDSAMPLE *</label>
+              <input style={inputSt} placeholder="ej: S-001" value={muestra.idSample} onChange={e => set('idSample', e.target.value)} />
+            </div>
+          </div>
+
+          {/* ── 2. POSICIÓN ── */}
+          <SectionLabel icon="📐" text="POSICIÓN & PROFUNDIDAD" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+            <div>
+              <label style={labelSt}>ELEVATION (m)</label>
+              <input style={inputSt} type="number" placeholder="msnm" value={muestra.elevation} onChange={e => set('elevation', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelSt}>Xm (E UTM)</label>
+              <input style={inputSt} type="number" placeholder="Este" value={muestra.xm} onChange={e => set('xm', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelSt}>Ym (N UTM)</label>
+              <input style={inputSt} type="number" placeholder="Norte" value={muestra.ym} onChange={e => set('ym', e.target.value)} />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+            <div>
+              <label style={labelSt}>FROM (m)</label>
+              <input style={inputSt} type="number" step="0.1" placeholder="desde" value={muestra.from} onChange={e => set('from', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelSt}>TO (m)</label>
+              <input style={inputSt} type="number" step="0.1" placeholder="hasta" value={muestra.to} onChange={e => set('to', e.target.value)} />
+            </div>
+          </div>
+
+          {/* ── 3. GEOLOGÍA ── */}
+          <SectionLabel icon="🪨" text="GEOLOGÍA" />
+          <label style={labelSt}>HORIZONTE</label>
+          <ChipSelect options={HORIZONTES} value={muestra.horizonte} onChange={v => set('horizonte', v)} color="#F59E0B" />
+
+          <label style={labelSt}>ROCA CAJA</label>
+          <ChipSelect options={ROCAS_CAJA} value={muestra.rocaCaja} onChange={v => set('rocaCaja', v)} color="#8B5CF6" />
+
+          <label style={labelSt}>ESTRUCTURA</label>
+          <ChipSelect options={ESTRUCTURAS} value={muestra.estructura} onChange={v => set('estructura', v)} color="#3B82F6" />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+            <div>
+              <label style={labelSt}>RUMBO °</label>
+              <input style={inputSt} type="number" placeholder="0 – 360" value={muestra.rumbo} onChange={e => set('rumbo', e.target.value)} min={0} max={360} />
+            </div>
+            <div>
+              <label style={labelSt}>MANTEO °</label>
+              <input style={inputSt} type="number" placeholder="0 – 90" value={muestra.manteo} onChange={e => set('manteo', e.target.value)} min={0} max={90} />
+            </div>
+          </div>
+
+          {/* ── 4. MINERALOGÍA ── */}
+          <SectionLabel icon="💎" text="MINERALOGÍA" />
+          <ChipSelect options={MINERALOGIA_OPTS} value={muestra.mineralogia} onChange={v => set('mineralogia', v)} multi color="#22C55E" />
+
+          {/* ── 5. ALTERACION ── */}
+          <SectionLabel icon="🧪" text="ALTERACION" />
+          <AlteracionSelector value={muestra.alteracion} onChange={v => set('alteracion', v)} />
+
+          {/* ── 6. MINERALIZACIÓN ── */}
+          <SectionLabel icon="📊" text="MINERALIZACIÓN" />
+          <ChipSelect options={MINERALIZACION_OPTS} value={muestra.mineralizacion} onChange={v => set('mineralizacion', v)} color="#B91C1C" />
+
+          {/* ── 7. COMENTARIO ── */}
+          <SectionLabel icon="📝" text="COMENTARIO" />
+          <textarea value={muestra.comentario} onChange={e => set('comentario', e.target.value)}
+            placeholder="Observaciones de campo..."
+            style={{ ...inputSt, height: 72, resize: 'none', marginBottom: 10 }}
+          />
+
+          {/* ── 8. RESPONSABLE ── */}
+          <SectionLabel icon="👤" text="RESPONSABLE" />
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8, marginBottom: 10 }}>
+            <div>
+              <label style={labelSt}>TAKEN BY</label>
+              <input style={inputSt} placeholder="Nombre del geólogo" value={muestra.takenBy} onChange={e => set('takenBy', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelSt}>SEMANA</label>
+              <input style={inputSt} type="number" placeholder="ej: 22" value={muestra.semana} onChange={e => set('semana', e.target.value)} />
+            </div>
+          </div>
+
+          {/* ── 9. FOTOGRAFÍAS ── */}
+          <SectionLabel icon="📸" text="FOTOGRAFÍAS" />
+          <FotoGaleria fotos={muestra.fotos} onChange={v => set('fotos', v)} />
+
+          {/* ── 10. AUDIO ── */}
+          <SectionLabel icon="🎙️" text="AUDIO DE CAMPO" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={toggleRecording} style={{
+              width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
+              background: isRecording ? (blink ? '#B91C1C' : 'rgba(185,28,28,0.5)') : '#1A1A1C',
+              border: `2px solid ${isRecording ? '#D4AF37' : 'rgba(255,255,255,0.15)'}`,
+              color: '#fff', fontSize: 20, cursor: 'pointer', transition: 'all 0.3s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {isRecording ? '⏹️' : '🎙️'}
+            </button>
+            {muestra.audioBlob
+              ? <>
+                  <span style={{ color: '#22C55E', fontSize: 12 }}>✅ Audio grabado</span>
+                  <button onClick={() => set('audioBlob', null)} style={{
+                    background: 'none', border: 'none', color: '#B91C1C', cursor: 'pointer', fontSize: 12,
+                  }}>Eliminar</button>
+                </>
+              : <span style={{ color: '#444', fontSize: 12 }}>Sin audio</span>
+            }
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+// ─── PUNTO FORM (multiple muestras) ──────────────────────────────────────────
+function PuntoForm({ position, onSave, onClose }) {
+  const [muestras, setMuestras] = useState([newMuestra()])
+
+  const update = (id, data) => setMuestras(prev => prev.map(m => m._id === id ? data : m))
+  const remove = (id) => setMuestras(prev => prev.filter(m => m._id !== id))
+  const add = () => setMuestras(prev => [...prev, newMuestra()])
+
+  const handleSave = () => {
+    const invalid = muestras.find(m => !m.cp || !m.idSample)
+    if (invalid) { alert('Cada muestra requiere CP e IDSAMPLE'); return }
+    onSave({ position, muestras, createdAt: new Date().toISOString() })
+  }
 
   return (
     <div className="slide-up" style={{
       position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 2000,
-      background: 'rgba(10,10,11,0.96)', backdropFilter: 'blur(24px)',
+      background: 'rgba(10,10,11,0.97)', backdropFilter: 'blur(24px)',
       borderTop: '1.5px solid rgba(212,175,55,0.3)',
-      borderRadius: '24px 24px 0 0', padding: '16px 20px 36px',
-      maxHeight: '90vh', overflowY: 'auto'
+      borderRadius: '24px 24px 0 0',
+      maxHeight: '92vh', display: 'flex', flexDirection: 'column',
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 20 }}>⛏️</span>
-          <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: 14, letterSpacing: '0.1em' }}>NUEVA MUESTRA</span>
-        </div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#8E8E93', fontSize: 20, cursor: 'pointer' }}>✕</button>
-      </div>
-      <div style={{ fontSize: 11, color: '#8E8E93', marginBottom: 4 }}>
-        📍 {position ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}` : 'Centro del mapa'}
-      </div>
-      <div className="divider" />
-
-      {/* ── IDENTIFICACIÓN ── */}
-      {sectionLabel('IDENTIFICACIÓN', '🏷️')}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 4 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '16px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+        flexShrink: 0,
+      }}>
         <div>
-          <span className="field-label">CP *</span>
-          <input className="input-field" placeholder="ej: CP-01" value={cp} onChange={e => setCp(e.target.value)} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>⛏️</span>
+            <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: 14, letterSpacing: '0.08em' }}>PUNTO DE MUESTREO</span>
+          </div>
+          <div style={{ fontSize: 11, color: '#8E8E93', marginTop: 3 }}>
+            📍 {position ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}` : '—'}
+            &nbsp;·&nbsp;
+            <span style={{ color: '#D4AF37' }}>{muestras.length}</span> muestra{muestras.length !== 1 ? 's' : ''}
+          </div>
         </div>
-        <div>
-          <span className="field-label">SEMANA</span>
-          <input className="input-field" placeholder="ej: 22" type="number" value={semana} onChange={e => setSemana(e.target.value)} />
-        </div>
-        <div>
-          <span className="field-label">IDSAMPLE *</span>
-          <input className="input-field" placeholder="ej: S-001" value={idSample} onChange={e => setIdSample(e.target.value)} />
-        </div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#8E8E93', fontSize: 22, cursor: 'pointer' }}>✕</button>
       </div>
 
-      {/* ── POSICIÓN ── */}
-      {sectionLabel('POSICIÓN & PROFUNDIDAD', '📐')}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 4 }}>
-        <div>
-          <span className="field-label">ELEVATION (m)</span>
-          <input className="input-field" placeholder="msnm" type="number" value={elevation} onChange={e => setElevation(e.target.value)} />
-        </div>
-        <div>
-          <span className="field-label">Xm (E)</span>
-          <input className="input-field" placeholder="UTM Este" type="number" value={xm} onChange={e => setXm(e.target.value)} />
-        </div>
-        <div>
-          <span className="field-label">Ym (N)</span>
-          <input className="input-field" placeholder="UTM Norte" type="number" value={ym} onChange={e => setYm(e.target.value)} />
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 4 }}>
-        <div>
-          <span className="field-label">FROM (m)</span>
-          <input className="input-field" placeholder="desde" type="number" step="0.1" value={fromM} onChange={e => setFromM(e.target.value)} />
-        </div>
-        <div>
-          <span className="field-label">TO (m)</span>
-          <input className="input-field" placeholder="hasta" type="number" step="0.1" value={toM} onChange={e => setToM(e.target.value)} />
-        </div>
-      </div>
-
-      {/* ── GEOLOGÍA ── */}
-      {sectionLabel('GEOLOGÍA', '🪨')}
-      <span className="field-label">HORIZONTE</span>
-      <ChipSelect options={HORIZONTES} value={horizonte} onChange={setHorizonte} color="#F59E0B" />
-
-      <span className="field-label">ROCA CAJA</span>
-      <ChipSelect options={ROCAS_CAJA} value={rocaCaja} onChange={setRocaCaja} color="#8B5CF6" />
-
-      <span className="field-label">ESTRUCTURA</span>
-      <ChipSelect options={ESTRUCTURAS_OPTS} value={estructura} onChange={setEstructura} color="#3B82F6" />
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 4 }}>
-        <div>
-          <span className="field-label">RUMBO (STRIKE °)</span>
-          <input className="input-field" type="number" placeholder="0 – 360°" value={rumbo} onChange={e => setRumbo(e.target.value)} min={0} max={360} />
-        </div>
-        <div>
-          <span className="field-label">MANTEO (DIP °)</span>
-          <input className="input-field" type="number" placeholder="0 – 90°" value={manteo} onChange={e => setManteo(e.target.value)} min={0} max={90} />
-        </div>
-      </div>
-
-      {/* ── MINERALOGÍA ── */}
-      {sectionLabel('MINERALOGÍA', '💎')}
-      <span className="field-label">MINERALES (multi-select)</span>
-      <ChipSelect options={MINERALES_OPTS} value={minerales} onChange={setMinerales} color="#22C55E" />
-
-      <span className="field-label">ALTERACION</span>
-      <ChipSelect options={ALTERACIONES_OPTS} value={alteracion} onChange={setAlteracion} color="#EC4899" />
-
-      <span className="field-label">MINERALIZA</span>
-      <ChipSelect options={MINERALIZACIONES_OPTS} value={mineraliza} onChange={setMineraliza} color="#B91C1C" />
-
-      {/* ── COMENTARIO ── */}
-      {sectionLabel('COMENTARIO', '📝')}
-      <textarea className="input-field" placeholder="Observaciones de campo, descripción de la muestra..." value={comentario} onChange={e => setComentario(e.target.value)}
-        style={{ height: 80, resize: 'none', marginBottom: 20 }} />
-
-      {/* Audio + Guardar */}
-      <div style={{ display: 'flex', gap: 12 }}>
-        <button onClick={toggleRecording} className={isRecording ? 'pulse-red' : ''} style={{
-          width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
-          background: isRecording ? (blink ? '#B91C1C' : 'rgba(185,28,28,0.5)') : '#1E1E20',
-          border: `2px solid ${isRecording ? '#D4AF37' : 'rgba(255,255,255,0.2)'}`,
-          color: '#fff', fontSize: 22, cursor: 'pointer', transition: 'all 0.3s'
-        }} title={isRecording ? 'Detener grabación' : 'Grabar audio'}>
-          {isRecording ? '🔴' : '🎙️'}
+      {/* Scrollable body */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px 0' }}>
+        {muestras.map((m, i) => (
+          <MuestraForm
+            key={m._id} muestra={m} index={i}
+            onChange={data => update(m._id, data)}
+            onRemove={() => remove(m._id)}
+            canRemove={muestras.length > 1}
+          />
+        ))}
+        <button onClick={add} style={{
+          width: '100%', padding: '12px', borderRadius: 12, marginBottom: 16,
+          border: '1.5px dashed rgba(212,175,55,0.35)',
+          background: 'rgba(212,175,55,0.03)', color: '#D4AF37',
+          cursor: 'pointer', fontSize: 13, fontFamily: 'Inter, sans-serif',
+          fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}>
+          ＋ Agregar muestra en este punto
         </button>
-        {audioBlob && <span style={{ color: '#22C55E', fontSize: 12, alignSelf: 'center' }}>✅ Audio grabado</span>}
-        <button className="btn-primary" onClick={handleSave} style={{ flex: 1, justifyContent: 'center' }}>
-          GUARDAR MUESTRA
+      </div>
+
+      {/* Footer */}
+      <div style={{ padding: '12px 16px 28px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+        <button onClick={handleSave} style={{
+          width: '100%', padding: '14px', borderRadius: 14,
+          background: 'linear-gradient(135deg, #B91C1C, #7f1d1d)',
+          border: '1px solid rgba(212,175,55,0.3)',
+          color: '#fff', fontSize: 14, fontWeight: 700,
+          cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+          letterSpacing: '0.06em',
+        }}>
+          💾 GUARDAR PUNTO — {muestras.length} muestra{muestras.length !== 1 ? 's' : ''}
         </button>
       </div>
     </div>
   )
 }
 
-// ── Station List Sidebar ──
+// ─── STATION SIDEBAR ─────────────────────────────────────────────────────────
 function StationSidebar({ stations, onClose, onExport }) {
-  const horizColors = {
-    'Óxidos': '#F59E0B',
-    'Sulfuros secundarios': '#3B82F6',
-    'Sulfuros primarios': '#8B5CF6',
-    'Zona de lixiviación': '#22C55E',
-  }
+  const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
+  const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
 
   return (
     <div className="slide-in" style={{
       position: 'fixed', top: 0, left: 0, bottom: 0, width: 340, zIndex: 1500,
       background: 'rgba(10,10,11,0.97)', backdropFilter: 'blur(20px)',
-      borderRight: '1px solid rgba(212,175,55,0.2)', display: 'flex', flexDirection: 'column'
+      borderRight: '1px solid rgba(212,175,55,0.2)', display: 'flex', flexDirection: 'column',
     }}>
-      {/* Header */}
       <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em' }}>⛏️ MUESTRAS</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em' }}>⛏️ CAMPAÑA</span>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#8E8E93', cursor: 'pointer', fontSize: 18 }}>✕</button>
         </div>
-        <div style={{ color: '#8E8E93', fontSize: 12 }}>{stations.length} muestra{stations.length !== 1 ? 's' : ''} registrada{stations.length !== 1 ? 's' : ''}</div>
+        <div style={{ color: '#8E8E93', fontSize: 12 }}>
+          {stations.length} punto{stations.length !== 1 ? 's' : ''}
+          &nbsp;·&nbsp;{totalMuestras} muestras
+          {totalFotos > 0 && <>&nbsp;·&nbsp;📸 {totalFotos}</>}
+        </div>
       </div>
 
-      {/* List */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
         {stations.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#8E8E93', marginTop: 40, fontSize: 13 }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>🗺️</div>
-            Aún no hay muestras.<br />Toca el mapa para crear una.
+          <div style={{ textAlign: 'center', color: '#8E8E93', marginTop: 48, fontSize: 13 }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🗺️</div>
+            Sin puntos aún.<br />Toca el mapa para comenzar.
           </div>
-        ) : stations.map((s, i) => (
-          <div key={i} className="fade-in" style={{
-            background: '#1E1E20', borderRadius: 12, padding: '12px 14px', marginBottom: 8,
-            border: '1px solid rgba(212,175,55,0.15)',
-            transition: 'border-color 0.2s'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <span className="chip chip-gold">{s.cp || '—'}</span>
-                <span className="chip chip-red">{s.idSample || '—'}</span>
-                {s.horizonte && <span style={{
-                  padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                  background: `${horizColors[s.horizonte] || '#B91C1C'}22`,
-                  color: horizColors[s.horizonte] || '#B91C1C', border: `1px solid ${horizColors[s.horizonte] || '#B91C1C'}44`
-                }}>{s.horizonte}</span>}
+        ) : stations.map((s, i) => {
+          const fCnt = s.muestras.reduce((a, m) => a + (m.fotos?.length || 0), 0)
+          const hasAudio = s.muestras.some(m => m.audioBlob)
+          return (
+            <div key={i} className="fade-in" style={{
+              background: '#1A1A1C', borderRadius: 12, padding: '12px 14px',
+              marginBottom: 8, border: '1px solid rgba(212,175,55,0.12)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {s.muestras.slice(0, 2).map((m, j) => (
+                    <span key={j} style={{
+                      padding: '2px 8px', borderRadius: 6, fontSize: 11,
+                      background: 'rgba(212,175,55,0.1)', color: '#D4AF37',
+                      border: '1px solid rgba(212,175,55,0.25)', fontFamily: 'Inter, sans-serif', fontWeight: 600,
+                    }}>{m.cp} · {m.idSample}</span>
+                  ))}
+                  {s.muestras.length > 2 && (
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 6, fontSize: 11,
+                      background: 'rgba(212,175,55,0.06)', color: '#8E8E93', border: '1px solid rgba(255,255,255,0.08)',
+                    }}>+{s.muestras.length - 2}</span>
+                  )}
+                </div>
+                <span style={{ color: '#555', fontSize: 10 }}>#{i + 1}</span>
               </div>
-              <span style={{ color: '#8E8E93', fontSize: 10 }}>#{i + 1}</span>
-            </div>
-            <div style={{ fontSize: 11, color: '#8E8E93', fontFeatureSettings: '"tnum"', marginBottom: 4 }}>
-              {s.rocaCaja && <span style={{ color: '#aaa' }}>{s.rocaCaja}</span>}
-              {s.estructura && <span style={{ color: '#888' }}> · {s.estructura}</span>}
-            </div>
-            {(s.rumbo !== null || s.manteo !== null) && (
-              <div style={{ fontSize: 11, color: '#8E8E93' }}>
-                Strike: <span style={{ color: '#fff' }}>{s.rumbo ?? '—'}°</span> &nbsp;|&nbsp;
-                Dip: <span style={{ color: '#fff' }}>{s.manteo ?? '—'}°</span>
+              {s.muestras[0]?.horizonte && (
+                <div style={{ fontSize: 11, color: '#aaa', marginBottom: 3 }}>{s.muestras[0].horizonte}</div>
+              )}
+              <div style={{ fontSize: 10, color: '#555' }}>
+                {s.muestras.length} muestra{s.muestras.length !== 1 ? 's' : ''}
+                {fCnt > 0 && ` · 📸 ${fCnt}`}
+                {hasAudio && ' · 🎙️'}
               </div>
-            )}
-            {s.minerales && <div style={{ fontSize: 11, color: '#22C55E', marginTop: 4 }}>💎 {s.minerales}</div>}
-            {s.comentario && <div style={{ fontSize: 11, color: '#8E8E93', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.comentario}</div>}
-            {s.audioBlob && <div style={{ marginTop: 4 }}><span className="chip chip-green">🎙️ Audio</span></div>}
-            <div style={{ fontSize: 10, color: '#555', marginTop: 6 }}>
-              {s.from != null && s.to != null ? `${s.from}m – ${s.to}m` : ''}
-              {s.elevation ? ` · ${s.elevation}m snm` : ''}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      {/* Export button */}
       {stations.length > 0 && (
-        <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <button className="btn-primary" onClick={onExport} style={{ width: '100%', justifyContent: 'center' }}>
+        <div style={{ padding: '12px 16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <button onClick={onExport} style={{
+            width: '100%', padding: '13px', borderRadius: 12,
+            background: 'linear-gradient(135deg, #B91C1C, #7f1d1d)',
+            border: '1px solid rgba(212,175,55,0.3)',
+            color: '#fff', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
             📦 Exportar Campaña ZIP
           </button>
         </div>
@@ -479,17 +736,16 @@ function StationSidebar({ stations, onClose, onExport }) {
   )
 }
 
-// ── Main App ──
+// ─── MAIN APP ────────────────────────────────────────────────────────────────
 export default function App() {
   const [stations, setStations] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [clickPosition, setClickPosition] = useState(null)
   const [gpsPosition, setGpsPosition] = useState(null)
   const [showSidebar, setShowSidebar] = useState(false)
-  const [mapCenter] = useState([-33.45, -70.65]) // Santiago como default
+  const [mapCenter] = useState([-33.45, -70.65])
   const [activeLayer, setActiveLayer] = useState('osm')
 
-  // Map click handler
   function MapClickHandler() {
     useMapEvents({
       click(e) {
@@ -501,8 +757,8 @@ export default function App() {
     return null
   }
 
-  const handleSaveStation = useCallback((station) => {
-    setStations(prev => [...prev, station])
+  const handleSave = useCallback((punto) => {
+    setStations(prev => [...prev, punto])
     setShowForm(false)
     setClickPosition(null)
   }, [])
@@ -510,83 +766,116 @@ export default function App() {
   const handleExport = useCallback(async () => {
     const { default: JSZip } = await import('jszip')
     const zip = new JSZip()
+    const fotosDir  = zip.folder('fotos')
+    const audiosDir = zip.folder('audios')
 
-    // GeoJSON
-    const geojson = {
-      type: 'FeatureCollection',
-      features: stations.map((s, i) => ({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [s.position.lng, s.position.lat] },
-        properties: {
-          id: i + 1,
-          CP: s.cp, SEMANA: s.semana, IDSAMPLE: s.idSample,
-          Elevation: s.elevation, Xm: s.xm, Ym: s.ym,
-          From: s.from, To: s.to,
-          HORIZONTE: s.horizonte, ROCA_CAJA: s.rocaCaja,
-          ESTRUCTURA: s.estructura, RUMBO: s.rumbo, MANTEO: s.manteo,
-          MINERALES: s.minerales, ALTERACION: s.alteracion,
-          MINERALIZA: s.mineraliza, COMENTARIO: s.comentario,
-          createdAt: s.createdAt
+    // ── GeoJSON ──
+    const features = stations.flatMap(s =>
+      s.muestras.map(m => {
+        const altStr = Object.entries(m.alteracion)
+          .filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join('; ')
+        return {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [s.position.lng, s.position.lat] },
+          properties: {
+            CP: m.cp, IDSAMPLE: m.idSample,
+            Elevation: m.elevation, Xm: m.xm, Ym: m.ym,
+            From: m.from, To: m.to,
+            HORIZONTE: m.horizonte, 'ROCA CAJA': m.rocaCaja,
+            ESTRUCTURA: m.estructura, RUMBO: m.rumbo, MANTEO: m.manteo,
+            MINERALOGÍA: (m.mineralogia || []).join('; '),
+            ALTERACION: altStr,
+            MINERALIZACION: m.mineralizacion,
+            COMENTARIO: m.comentario,
+            'TAKEN BY': m.takenBy, SEMANA: m.semana,
+            Lat: s.position.lat, Lng: s.position.lng, Fecha: s.createdAt,
+          }
         }
-      }))
-    }
-    zip.file('muestras.geojson', JSON.stringify(geojson, null, 2))
-
-    // CSV — columnas exactas de la planilla
-    const headers = 'CP\tSEMANA\tIDSAMPLE\tElevation\tXm\tYm\tFrom\tTo\tHORIZONTE\tROCA CAJA\tESTRUCTURA\tRUMBO\tMANTEO\tMINERALES\tALTERACION\tMINERALIZA\tCOMENTARIO\tLat\tLng\tFecha'
-    const rows = stations.map(s =>
-      [s.cp, s.semana, s.idSample, s.elevation, s.xm, s.ym,
-       s.from, s.to, s.horizonte, s.rocaCaja, s.estructura,
-       s.rumbo, s.manteo, s.minerales, s.alteracion, s.mineraliza,
-       `"${(s.comentario||'').replace(/"/g,'""')}"`,
-       s.position.lat, s.position.lng, s.createdAt].join('\t')
+      })
     )
-    zip.file('muestras.tsv', [headers, ...rows].join('\n'))
+    zip.file('muestras.geojson', JSON.stringify({ type: 'FeatureCollection', features }, null, 2))
 
-    // Audios
-    stations.forEach((s, i) => {
-      if (s.audioBlob) zip.file(`audio_${s.cp || i+1}_${s.idSample || ''}.webm`, s.audioBlob)
-    })
+    // ── TSV (exact column order) ──
+    const COLS = [
+      'CP', 'IDSAMPLE', 'Elevation', 'Xm', 'Ym', 'From', 'To',
+      'HORIZONTE', 'ROCA CAJA', 'ESTRUCTURA', 'RUMBO', 'MANTEO',
+      'MINERALOGÍA', 'ALTERACION', 'MINERALIZACION', 'COMENTARIO',
+      'TAKEN BY', 'SEMANA', 'Lat', 'Lng', 'Fecha',
+    ]
+    const rows = [COLS.join('\t')]
+    stations.forEach(s => s.muestras.forEach(m => {
+      const altStr = Object.entries(m.alteracion)
+        .filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join('; ')
+      rows.push([
+        m.cp, m.idSample, m.elevation, m.xm, m.ym, m.from, m.to,
+        m.horizonte, m.rocaCaja, m.estructura, m.rumbo, m.manteo,
+        (m.mineralogia || []).join('; '), altStr, m.mineralizacion,
+        `"${(m.comentario || '').replace(/"/g, '""')}"`,
+        m.takenBy, m.semana,
+        s.position.lat, s.position.lng, s.createdAt,
+      ].join('\t'))
+    }))
+    zip.file('muestras.tsv', rows.join('\n'))
+
+    // ── Fotos & audios ──
+    for (const s of stations) {
+      for (const m of s.muestras) {
+        const prefix = `${m.cp || 'CP'}_${m.idSample || 'S'}`
+        if (m.fotos?.length) {
+          m.fotos.forEach((f, i) => fotosDir.file(`${prefix}_foto_${i + 1}.jpg`, f.file))
+        }
+        if (m.audioBlob) {
+          audiosDir.file(`${prefix}_audio.webm`, m.audioBlob)
+        }
+      }
+    }
 
     const blob = await zip.generateAsync({ type: 'blob' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `campana_GeoINducta_${new Date().toISOString().slice(0,10)}.zip`
+    a.download = `campana_GeoINducta_${new Date().toISOString().slice(0, 10)}.zip`
     a.click()
     URL.revokeObjectURL(url)
   }, [stations])
+
+  const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
 
   return (
     <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
       {/* Top Bar */}
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-        background: 'rgba(10,10,11,0.9)', backdropFilter: 'blur(16px)',
+        background: 'rgba(10,10,11,0.92)', backdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(212,175,55,0.2)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 16px', height: 56
+        padding: '10px 16px', height: 56,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={() => { setShowSidebar(s => !s); setShowForm(false) }}
-            style={{ background: 'none', border: 'none', color: showSidebar ? '#D4AF37' : '#8E8E93', fontSize: 20, cursor: 'pointer' }}>☰</button>
-          <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '0.05em' }}>
+            style={{ background: 'none', border: 'none', color: showSidebar ? '#D4AF37' : '#8E8E93', fontSize: 20, cursor: 'pointer' }}>
+            ☰
+          </button>
+          <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '0.05em', fontFamily: 'Inter, sans-serif' }}>
             Geo<span style={{ color: '#B91C1C' }}>IN</span>ducta
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {gpsPosition && <span className="chip chip-green">📍 GPS</span>}
-          <span className="chip chip-gold">{stations.length} muestras</span>
+          {gpsPosition && (
+            <span style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }}>
+              📍 GPS
+            </span>
+          )}
+          {totalMuestras > 0 && (
+            <span style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, background: 'rgba(212,175,55,0.1)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>
+              {totalMuestras} muestras
+            </span>
+          )}
         </div>
       </div>
 
       {/* Map */}
-      <MapContainer
-        center={mapCenter}
-        zoom={13}
-        style={{ height: '100%', width: '100%' }}
-        zoomControl={false}
-      >
+      <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
         <TileLayer
           key={activeLayer}
           url={TILE_LAYERS[activeLayer].url}
@@ -596,27 +885,27 @@ export default function App() {
         <MapClickHandler />
         <GPSTracker onPosition={setGpsPosition} />
 
-        {/* GPS position marker */}
         {gpsPosition && <Marker position={gpsPosition} icon={gpsIcon}><Popup>Tu posición actual</Popup></Marker>}
 
-        {/* Station markers */}
         {stations.map((s, i) => (
-          <Marker key={i} position={s.position} icon={createStationIcon(s.horizonte)}>
+          <Marker key={i} position={s.position} icon={createStationIcon(s.muestras)}>
             <Popup>
               <div style={{ minWidth: 200, fontFamily: 'Inter, sans-serif', fontSize: 12 }}>
-                <strong style={{ color: '#B91C1C', display: 'block', marginBottom: 4 }}>
-                  {s.cp} — {s.idSample}
+                <strong style={{ color: '#B91C1C', display: 'block', marginBottom: 6 }}>
+                  Punto #{i + 1} — {s.muestras.length} muestra{s.muestras.length !== 1 ? 's' : ''}
                 </strong>
-                {s.horizonte && <div><b>Horizonte:</b> {s.horizonte}</div>}
-                {s.rocaCaja && <div><b>Roca caja:</b> {s.rocaCaja}</div>}
-                {s.estructura && <div><b>Estructura:</b> {s.estructura}</div>}
-                {s.rumbo != null && <div><b>Strike/Dip:</b> {s.rumbo}° / {s.manteo}°</div>}
-                {s.minerales && <div><b>Minerales:</b> {s.minerales}</div>}
-                {s.alteracion && <div><b>Alteración:</b> {s.alteracion}</div>}
-                {s.mineraliza && <div><b>Mineralización:</b> {s.mineraliza}</div>}
-                {(s.from != null || s.to != null) && <div><b>Intervalo:</b> {s.from}m – {s.to}m</div>}
-                {s.comentario && <div><b>Comentario:</b> {s.comentario}</div>}
-                {s.audioBlob && <div style={{ marginTop: 4 }}>🎙️ Audio registrado</div>}
+                {s.muestras.map((m, j) => (
+                  <div key={j} style={{
+                    marginBottom: 6, paddingBottom: 6,
+                    borderBottom: j < s.muestras.length - 1 ? '1px solid #eee' : 'none',
+                  }}>
+                    <div><b>{m.cp}</b> — {m.idSample}</div>
+                    {m.horizonte && <div>Horizonte: {m.horizonte}</div>}
+                    {m.rocaCaja && <div>Roca: {m.rocaCaja}</div>}
+                    {m.mineralizacion && <div>Mineralización: {m.mineralizacion}</div>}
+                    {m.fotos?.length > 0 && <div>📸 {m.fotos.length} foto{m.fotos.length !== 1 ? 's' : ''}</div>}
+                  </div>
+                ))}
               </div>
             </Popup>
           </Marker>
@@ -625,53 +914,51 @@ export default function App() {
         <RecenterButton position={gpsPosition} />
       </MapContainer>
 
-      {/* Layer Switcher */}
       <LayerSwitcher activeLayer={activeLayer} onChange={setActiveLayer} />
 
-      {/* Sidebar */}
-      {showSidebar && <StationSidebar stations={stations} onClose={() => setShowSidebar(false)} onExport={handleExport} />}
+      {showSidebar && (
+        <StationSidebar
+          stations={stations}
+          onClose={() => setShowSidebar(false)}
+          onExport={handleExport}
+        />
+      )}
 
-      {/* Station Form */}
       {showForm && (
-        <StationForm
+        <PuntoForm
           position={clickPosition}
-          onSave={handleSaveStation}
+          onSave={handleSave}
           onClose={() => { setShowForm(false); setClickPosition(null) }}
         />
       )}
 
-      {/* FAB hint */}
       {!showForm && !showSidebar && stations.length === 0 && (
         <div className="fade-in" style={{
           position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
-          background: 'rgba(10,10,11,0.85)', backdropFilter: 'blur(12px)',
+          background: 'rgba(10,10,11,0.88)', backdropFilter: 'blur(12px)',
           border: '1px solid rgba(212,175,55,0.3)', borderRadius: 99,
-          padding: '10px 20px', fontSize: 13, color: '#D4AF37', zIndex: 999,
-          whiteSpace: 'nowrap'
+          padding: '10px 20px', fontSize: 13, color: '#D4AF37', zIndex: 999, whiteSpace: 'nowrap',
+          fontFamily: 'Inter, sans-serif',
         }}>
-          👆 Toca el mapa para registrar una muestra
+          👆 Toca el mapa para registrar un punto de muestreo
         </div>
       )}
 
-      {/* GPS activate button */}
-      <button
-        onClick={() => {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              pos => setGpsPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-              () => alert('GPS no disponible')
-            )
-          }
-        }}
-        style={{
-          position: 'fixed', bottom: 40, right: 12, zIndex: 999,
-          background: 'rgba(10,10,11,0.9)', border: '1px solid rgba(212,175,55,0.3)',
-          color: '#fff', borderRadius: '50%', width: 44, height: 44,
-          cursor: 'pointer', fontSize: 20, backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}
-        title="Activar GPS"
-      >🛰️</button>
+      {/* GPS button */}
+      <button onClick={() => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            pos => setGpsPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            () => alert('GPS no disponible')
+          )
+        }
+      }} style={{
+        position: 'fixed', bottom: 40, right: 12, zIndex: 999,
+        background: 'rgba(10,10,11,0.9)', border: '1px solid rgba(212,175,55,0.3)',
+        color: '#fff', borderRadius: '50%', width: 44, height: 44,
+        cursor: 'pointer', fontSize: 20, backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }} title="Activar GPS">🛰️</button>
     </div>
   )
 }

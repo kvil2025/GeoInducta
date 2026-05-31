@@ -103,7 +103,7 @@ function LayerSwitcher({ activeLayer, onChange }) {
             <button key={key} onClick={() => { onChange(key); setOpen(false) }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                width: '100%', padding: '11px 16px', background: 'none',
+                width: '100%', padding: '11px 16px',
                 border: 'none', cursor: 'pointer', textAlign: 'left',
                 color: activeLayer === key ? '#D4AF37' : '#fff',
                 fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: activeLayer === key ? 700 : 400,

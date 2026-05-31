@@ -36,3 +36,4 @@ yarn-error.log*
 
 # Audio/data de campo (no versionar capturas de usuario)
 campana_*.zip
+.vercel

@@ -5,9 +5,6 @@ import 'leaflet/dist/leaflet.css'
 import localforage from 'localforage'
 import imageCompression from 'browser-image-compression'
 import { useGoogleLogin } from '@react-oauth/google'
-import { kml } from '@tmcw/togeojson'
-import parseGeoraster from 'georaster'
-import GeoRasterLayer from 'georaster-layer-for-leaflet'
 import { GeoJSON } from 'react-leaflet'
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
@@ -129,17 +126,19 @@ function GeoTiffLayer({ georaster }) {
   useEffect(() => {
     if (!georaster) return
     let layer
-    try {
-      layer = new GeoRasterLayer({
-        georaster,
-        opacity: 0.7,
-        resolution: 256
-      })
-      layer.addTo(map)
-      map.fitBounds(layer.getBounds())
-    } catch (err) {
-      console.error('Error renderizando GeoTIFF', err)
-    }
+    import('georaster-layer-for-leaflet').then(({ default: GeoRasterLayer }) => {
+      try {
+        layer = new GeoRasterLayer({
+          georaster,
+          opacity: 0.7,
+          resolution: 256
+        })
+        layer.addTo(map)
+        map.fitBounds(layer.getBounds())
+      } catch (err) {
+        console.error('Error renderizando GeoTIFF', err)
+      }
+    })
     return () => {
       if (layer) map.removeLayer(layer)
     }
@@ -523,6 +522,7 @@ function PuntoForm({ position, onSave, onClose, initialData }) {
   const [muestras, setMuestras] = useState(initialData ? initialData.muestras : [newMuestra()])
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [muestraToDelete, setMuestraToDelete] = useState(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   const update = (id, data) => setMuestras(prev => prev.map(m => m._id === id ? data : m))
   
@@ -542,6 +542,7 @@ function PuntoForm({ position, onSave, onClose, initialData }) {
   const handleSave = () => {
     const invalid = muestras.find(m => !m.cp || !m.idSample)
     if (invalid) { alert('Cada muestra requiere CP e IDSAMPLE'); return }
+    setIsSaving(true)
     onSave({
       id: initialData ? initialData.id : generateId(),
       position: initialData ? initialData.position : position,
@@ -876,6 +877,7 @@ export default function App() {
         const zip = await JSZip.loadAsync(arrayBuffer)
         const kmlFile = Object.values(zip.files).find(f => f.name.endsWith('.kml'))
         if (kmlFile) {
+          const { kml } = await import('@tmcw/togeojson')
           const text = await kmlFile.async('text')
           const dom = new DOMParser().parseFromString(text, 'text/xml')
           const geojson = kml(dom)
@@ -884,6 +886,7 @@ export default function App() {
           alert('No se encontró archivo .kml dentro del KMZ')
         }
       } else if (ext === 'kml') {
+        const { kml } = await import('@tmcw/togeojson')
         const text = await file.text()
         const dom = new DOMParser().parseFromString(text, 'text/xml')
         const geojson = kml(dom)
@@ -893,6 +896,7 @@ export default function App() {
         const geojson = JSON.parse(text)
         setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
       } else if (ext === 'tif' || ext === 'tiff') {
+        const { default: parseGeoraster } = await import('georaster')
         const arrayBuffer = await file.arrayBuffer()
         const raster = await parseGeoraster(arrayBuffer)
         setExternalLayers(prev => [...prev, { id: generateId(), type: 'geotiff', georaster: raster, name }])

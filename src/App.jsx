@@ -97,6 +97,25 @@ const gpsIcon = L.divIcon({
 // ─── SECURITY: uso de crypto.randomUUID() en lugar de Math.random() ────────
 const generateId = () => crypto.randomUUID().replace(/-/g, '').substring(0, 9)
 
+// ─── CORRELATIVOS ────────────────────────────────────────────────────────────────────────────
+const parseCorrelativo = (str) => {
+  if (!str) return null
+  const match = str.match(/^(.*?)(\d+)$/)
+  if (!match) return null
+  return { prefix: match[1], num: parseInt(match[2], 10), padLength: match[2].length }
+}
+
+const nextCorrelativo = (str) => {
+  const parsed = parseCorrelativo(str)
+  if (!parsed) return str || ''
+  const nextNum = parsed.num + 1
+  // Mantiene el padding de ceros: "001" → "002", pero "9" → "10"
+  const padded = parsed.padLength > 1
+    ? String(nextNum).padStart(parsed.padLength, '0')
+    : String(nextNum)
+  return parsed.prefix + padded
+}
+
 const newMuestra = () => ({
   _id: generateId(),
   cp: '', idSample: '', elevation: '', xm: '', ym: '', from: '', to: '',
@@ -545,8 +564,16 @@ function MuestraForm({ muestra, index, onChange, onRemove, canRemove }) {
   )
 }
 
-function PuntoForm({ position, onSave, onClose, initialData }) {
-  const [muestras, setMuestras] = useState(initialData ? initialData.muestras : [newMuestra()])
+function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos }) {
+  // Si es un punto nuevo (no edición) y hay correlativos anteriores, pre-rellenar
+  const initMuestras = () => {
+    const m = newMuestra()
+    if (nextCorrelativos?.nextCp)       m.cp       = nextCorrelativos.nextCp
+    if (nextCorrelativos?.nextIdSample) m.idSample = nextCorrelativos.nextIdSample
+    return [m]
+  }
+
+  const [muestras, setMuestras] = useState(initialData ? initialData.muestras : initMuestras())
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [muestraToDelete, setMuestraToDelete] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -564,7 +591,14 @@ function PuntoForm({ position, onSave, onClose, initialData }) {
     setMuestraToDelete(null)
   }
 
-  const add = () => setMuestras(prev => [...prev, newMuestra()])
+  // Al agregar nueva muestra: mismo CP, IDSAMPLE incrementado
+  const add = () => {
+    const lastM = muestras[muestras.length - 1]
+    const newM  = newMuestra()
+    newM.cp       = lastM.cp || ''
+    newM.idSample = nextCorrelativo(lastM.idSample)
+    setMuestras(prev => [...prev, newM])
+  }
 
   const handleSave = () => {
     const invalid = muestras.find(m => !m.cp || !m.idSample)
@@ -898,6 +932,17 @@ export default function App() {
   const handleClearAll = useCallback(() => {
     saveStations([])
   }, [])
+
+  // ─── CORRELATIVOS: lee el último punto guardado (localforage) y calcula el siguiente ───
+  const getNextCorrelativos = useCallback(() => {
+    if (stations.length === 0) return { nextCp: '', nextIdSample: '' }
+    const lastStation = stations[stations.length - 1]
+    const lastMuestra = lastStation.muestras[lastStation.muestras.length - 1]
+    return {
+      nextCp:       nextCorrelativo(lastMuestra.cp),
+      nextIdSample: nextCorrelativo(lastMuestra.idSample),
+    }
+  }, [stations])
 
   // ─── SECURITY: Sanitización de propiedades GeoJSON contra XSS ───────────────
   const sanitizeStr = (val) => {
@@ -1278,6 +1323,7 @@ export default function App() {
           initialData={editingStation}
           onSave={handleSavePunto}
           onClose={() => { setShowForm(false); setEditingStation(null); setClickPosition(null) }}
+          nextCorrelativos={!editingStation ? getNextCorrelativos() : null}
         />
       )}
 

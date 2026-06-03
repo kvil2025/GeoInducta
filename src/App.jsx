@@ -116,6 +116,47 @@ const nextCorrelativo = (str) => {
   return parsed.prefix + padded
 }
 
+// ─── CONVERSIÓN LAT/LNG → UTM WGS84 ──────────────────────────────────────────────────────────
+const latLngToUTM = (lat, lng) => {
+  const a   = 6378137.0
+  const f   = 1 / 298.257223563
+  const e2  = 2 * f - f * f
+  const ep2 = e2 / (1 - e2)
+  const k0  = 0.9996
+
+  const latR = lat * Math.PI / 180
+  const zone = Math.floor((lng + 180) / 6) + 1
+  const lng0 = ((zone - 1) * 6 - 180 + 3) * Math.PI / 180
+
+  const N = a / Math.sqrt(1 - e2 * Math.sin(latR) ** 2)
+  const T = Math.tan(latR) ** 2
+  const C = ep2 * Math.cos(latR) ** 2
+  const A = Math.cos(latR) * ((lng * Math.PI / 180) - lng0)
+
+  const M = a * (
+    (1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256) * latR
+    - (3 * e2 / 8 + 3 * e2 ** 2 / 32 + 45 * e2 ** 3 / 1024) * Math.sin(2 * latR)
+    + (15 * e2 ** 2 / 256 + 45 * e2 ** 3 / 1024) * Math.sin(4 * latR)
+    - (35 * e2 ** 3 / 3072) * Math.sin(6 * latR)
+  )
+
+  const easting = Math.round(
+    k0 * N * (A + (1 - T + C) * A ** 3 / 6
+      + (5 - 18 * T + T ** 2 + 72 * C - 58 * ep2) * A ** 5 / 120) + 500000
+  )
+  let northing = Math.round(
+    k0 * (M + N * Math.tan(latR) * (
+      A ** 2 / 2
+      + (5 - T + 9 * C + 4 * C ** 2) * A ** 4 / 24
+      + (61 - 58 * T + T ** 2 + 600 * C - 330 * ep2) * A ** 6 / 720
+    ))
+  )
+  if (lat < 0) northing += 10000000
+
+  const band = 'CDEFGHJKLMNPQRSTUVWXX'[Math.min(Math.floor((lat + 80) / 8), 20)]
+  return { zone: `${zone}${band}`, zoneNum: zone, easting, northing }
+}
+
 const newMuestra = () => ({
   _id: generateId(),
   cp: '', idSample: '', elevation: '', xm: '', ym: '', from: '', to: '',
@@ -570,6 +611,12 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
     const m = newMuestra()
     if (nextCorrelativos?.nextCp)       m.cp       = nextCorrelativos.nextCp
     if (nextCorrelativos?.nextIdSample) m.idSample = nextCorrelativos.nextIdSample
+    // Auto-fill Xm/Ym desde posición GPS/clic convertida a UTM WGS84
+    if (position) {
+      const utm = latLngToUTM(position.lat, position.lng)
+      m.xm = String(utm.easting)
+      m.ym = String(utm.northing)
+    }
     return [m]
   }
 
@@ -632,7 +679,7 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
               <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: 14, letterSpacing: '0.08em' }}>PUNTO DE MUESTREO</span>
             </div>
             <div style={{ fontSize: 11, color: '#8E8E93', marginTop: 3 }}>
-              📍 {position ? `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}` : '—'}
+              📍 {position ? (() => { const u = latLngToUTM(position.lat, position.lng); return `Zona ${u.zone} | E: ${u.easting.toLocaleString('es-CL')} N: ${u.northing.toLocaleString('es-CL')}` })() : '—'}
               &nbsp;·&nbsp;
               <span style={{ color: '#D4AF37' }}>{muestras.length}</span> muestra{muestras.length !== 1 ? 's' : ''}
             </div>
@@ -1055,21 +1102,25 @@ export default function App() {
       'CP', 'IDSAMPLE', 'Elevation', 'Xm', 'Ym', 'From', 'To',
       'HORIZONTE', 'ROCA CAJA', 'ESTRUCTURA', 'RUMBO', 'MANTEO',
       'MINERALOGÍA', 'ALTERACION', 'MINERALIZACION', 'COMENTARIO',
-      'TAKEN BY', 'SEMANA', 'Lat', 'Lng', 'Fecha',
+      'TAKEN BY', 'SEMANA', 'UTM_ZONA', 'UTM_ESTE', 'UTM_NORTE', 'Lat_DD', 'Lng_DD', 'Fecha',
     ]
     const rows = [COLS.join('\t')]
-    stations.forEach(s => s.muestras.forEach(m => {
-      const altStr = Object.entries(m.alteracion)
-        .filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join('; ')
-      rows.push([
-        m.cp, m.idSample, m.elevation, m.xm, m.ym, m.from, m.to,
-        m.horizonte, m.rocaCaja, m.estructura, m.rumbo, m.manteo,
-        (m.mineralogia || []).join('; '), altStr, m.mineralizacion,
-        `"${(m.comentario || '').replace(/"/g, '""')}"`,
-        m.takenBy, m.semana,
-        s.position.lat, s.position.lng, s.createdAt,
-      ].join('\t'))
-    }))
+    stations.forEach(s => {
+      const utm = latLngToUTM(s.position.lat, s.position.lng)
+      s.muestras.forEach(m => {
+        const altStr = Object.entries(m.alteracion)
+          .filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join('; ')
+        rows.push([
+          m.cp, m.idSample, m.elevation, m.xm, m.ym, m.from, m.to,
+          m.horizonte, m.rocaCaja, m.estructura, m.rumbo, m.manteo,
+          (m.mineralogia || []).join('; '), altStr, m.mineralizacion,
+          `"${(m.comentario || '').replace(/"/g, '""')}"`,
+          m.takenBy, m.semana,
+          utm.zone, utm.easting, utm.northing,
+          s.position.lat, s.position.lng, s.createdAt,
+        ].join('\t'))
+      })
+    })
     zip.file('muestras.tsv', rows.join('\n'))
 
     for (const s of stations) {

@@ -33,8 +33,8 @@ const HORIZONTES = [
 ]
 
 const ROCAS_CAJA = [
-  'Granodiorita', 'Tonalita', 'Pórfido Q-Fsp', 'Andesita',
-  'Brecha', 'Skarn', 'Mármol', 'Cuarcita', 'Otro',
+  'Granodiorita', 'Tonalita', 'Granito', 'Pórfido Q-Fsp', 'Andesita',
+  'Brecha', 'Skarn', 'Mármol', 'Cuarcita', 'Metapelita', 'Otro',
 ]
 
 const ESTRUCTURAS = [
@@ -546,7 +546,14 @@ function MuestraForm({ muestra, index, onChange, onRemove, canRemove }) {
 
           <SectionLabel icon="🪨" text="GEOLOGÍA" />
           <label style={labelSt}>HORIZONTE</label><ChipSelect options={HORIZONTES} value={muestra.horizonte} onChange={v => set('horizonte', v)} color="#F59E0B" />
-          <label style={labelSt}>ROCA CAJA</label><ChipSelect options={ROCAS_CAJA} value={muestra.rocaCaja} onChange={v => set('rocaCaja', v)} color="#8B5CF6" />
+          <label style={labelSt}>ROCA CAJA</label>
+          <ChipSelect options={ROCAS_CAJA} value={muestra.rocaCaja} onChange={v => set('rocaCaja', v)} color="#8B5CF6" />
+          <input
+            style={{ ...inputSt, marginTop: -6, marginBottom: 14 }}
+            placeholder="Nombre adicional / especificar..."
+            value={muestra.rocaCajaCustom || ''}
+            onChange={e => set('rocaCajaCustom', e.target.value)}
+          />
           <label style={labelSt}>ESTRUCTURA</label><ChipSelect options={ESTRUCTURAS} value={muestra.estructura} onChange={v => set('estructura', v)} color="#3B82F6" />
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
@@ -611,6 +618,8 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
     const m = newMuestra()
     if (nextCorrelativos?.nextCp)       m.cp       = nextCorrelativos.nextCp
     if (nextCorrelativos?.nextIdSample) m.idSample = nextCorrelativos.nextIdSample
+    if (nextCorrelativos?.takenBy)      m.takenBy  = nextCorrelativos.takenBy
+    if (nextCorrelativos?.semana)       m.semana   = nextCorrelativos.semana
     // Auto-fill Xm/Ym desde posición GPS/clic convertida a UTM WGS84
     if (position) {
       const utm = latLngToUTM(position.lat, position.lng)
@@ -638,12 +647,14 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
     setMuestraToDelete(null)
   }
 
-  // Al agregar nueva muestra: mismo CP, IDSAMPLE incrementado
+  // Al agregar nueva muestra: mismo CP, IDSAMPLE incrementado, repite responsable y semana
   const add = () => {
     const lastM = muestras[muestras.length - 1]
     const newM  = newMuestra()
     newM.cp       = lastM.cp || ''
     newM.idSample = nextCorrelativo(lastM.idSample)
+    newM.takenBy  = lastM.takenBy  || ''
+    newM.semana   = lastM.semana   || ''
     setMuestras(prev => [...prev, newM])
   }
 
@@ -982,12 +993,14 @@ export default function App() {
 
   // ─── CORRELATIVOS: lee el último punto guardado (localforage) y calcula el siguiente ───
   const getNextCorrelativos = useCallback(() => {
-    if (stations.length === 0) return { nextCp: '', nextIdSample: '' }
+    if (stations.length === 0) return { nextCp: '', nextIdSample: '', takenBy: '', semana: '' }
     const lastStation = stations[stations.length - 1]
     const lastMuestra = lastStation.muestras[lastStation.muestras.length - 1]
     return {
       nextCp:       nextCorrelativo(lastMuestra.cp),
       nextIdSample: nextCorrelativo(lastMuestra.idSample),
+      takenBy:      lastMuestra.takenBy  || '',
+      semana:       lastMuestra.semana   || '',
     }
   }, [stations])
 
@@ -1084,7 +1097,7 @@ export default function App() {
             CP: m.cp, IDSAMPLE: m.idSample,
             Elevation: m.elevation, Xm: m.xm, Ym: m.ym,
             From: m.from, To: m.to,
-            HORIZONTE: m.horizonte, 'ROCA CAJA': m.rocaCaja,
+            HORIZONTE: m.horizonte, 'ROCA CAJA': m.rocaCaja + (m.rocaCajaCustom ? ` — ${m.rocaCajaCustom}` : ''),
             ESTRUCTURA: m.estructura, RUMBO: m.rumbo, MANTEO: m.manteo,
             MINERALOGÍA: (m.mineralogia || []).join('; '),
             ALTERACION: altStr,
@@ -1112,7 +1125,7 @@ export default function App() {
           .filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join('; ')
         rows.push([
           m.cp, m.idSample, m.elevation, m.xm, m.ym, m.from, m.to,
-          m.horizonte, m.rocaCaja, m.estructura, m.rumbo, m.manteo,
+          m.horizonte, m.rocaCaja + (m.rocaCajaCustom ? ` — ${m.rocaCajaCustom}` : ''), m.estructura, m.rumbo, m.manteo,
           (m.mineralogia || []).join('; '), altStr, m.mineralizacion,
           `"${(m.comentario || '').replace(/"/g, '""')}"`,
           m.takenBy, m.semana,

@@ -94,7 +94,8 @@ const gpsIcon = L.divIcon({
 })
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-const generateId = () => Math.random().toString(36).substr(2, 9)
+// ─── SECURITY: uso de crypto.randomUUID() en lugar de Math.random() ────────
+const generateId = () => crypto.randomUUID().replace(/-/g, '').substring(0, 9)
 
 const newMuestra = () => ({
   _id: generateId(),
@@ -245,6 +246,16 @@ function AlteracionSelector({ value, onChange }) {
   )
 }
 
+// ─── SECURITY: Validación de magic bytes para imágenes ───────────────────────
+const validateImageMagicBytes = async (file) => {
+  const buffer = await file.slice(0, 4).arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  const isJpeg = bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF
+  const isPng  = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47
+  const isWebp = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46
+  return isJpeg || isPng || isWebp
+}
+
 function FotoGaleria({ fotos, onChange }) {
   const inputRef = useRef(null)
   const [lightbox, setLightbox] = useState(null)
@@ -254,11 +265,27 @@ function FotoGaleria({ fotos, onChange }) {
     const files = Array.from(e.target.files)
     if (!files.length) return
     setIsCompressing(true)
+
+    // SECURITY: Validar magic bytes y tamaño antes de comprimir
+    const validFiles = []
+    for (const f of files) {
+      if (f.size > 20 * 1024 * 1024) {
+        alert(`"${f.name}" supera el tamaño máximo permitido (20MB).`)
+        continue
+      }
+      const isValid = await validateImageMagicBytes(f)
+      if (!isValid) {
+        alert(`"${f.name}" no es una imagen válida (JPEG, PNG o WebP requerido).`)
+        continue
+      }
+      validFiles.push(f)
+    }
+    if (!validFiles.length) { setIsCompressing(false); e.target.value = ''; return }
     
     const options = { maxSizeMB: 1, maxWidthOrHeight: 1280, useWebWorker: true, initialQuality: 0.8 }
 
     const compressed = await Promise.all(
-      files.map(async (f) => {
+      validFiles.map(async (f) => {
         try {
           const compressedFile = await imageCompression(f, options)
           return { file: compressedFile, url: URL.createObjectURL(compressedFile), name: f.name }
@@ -786,14 +813,22 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
   const [driveToken, setDriveToken] = useState(null)
-  
+  const [tokenExpiry, setTokenExpiry] = useState(null) // SECURITY: control de expiración
+  const lastSyncRef = useRef(0) // SECURITY: rate limiting de Drive sync
+
   const [externalLayers, setExternalLayers] = useState([])
   const fileInputRef = useRef(null)
+
+  // SECURITY: Verifica si el token de Drive sigue vigente (con 60s de margen)
+  const isDriveTokenValid = () =>
+    driveToken && tokenExpiry && Date.now() < tokenExpiry - 60_000
 
   // ─── GOOGLE LOGIN ───
   const loginToDrive = useGoogleLogin({
     onSuccess: (tokenResponse) => {
       setDriveToken(tokenResponse.access_token)
+      // Google tokens duran 3600 segundos; guardamos la expiración exacta
+      setTokenExpiry(Date.now() + (tokenResponse.expires_in ?? 3600) * 1000)
     },
     onError: () => alert('Error al iniciar sesión con Google'),
     scope: 'https://www.googleapis.com/auth/drive.file'
@@ -864,11 +899,40 @@ export default function App() {
     saveStations([])
   }, [])
 
+  // ─── SECURITY: Sanitización de propiedades GeoJSON contra XSS ───────────────
+  const sanitizeStr = (val) => {
+    if (typeof val !== 'string') return val
+    return val
+      .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#x27;')
+      .replace(/javascript:/gi, '')
+  }
+  const sanitizeGeoJSON = (geojson) => {
+    if (!geojson?.features) return geojson
+    return {
+      ...geojson,
+      features: geojson.features.map(f => ({
+        ...f,
+        properties: f.properties
+          ? Object.fromEntries(Object.entries(f.properties).map(([k, v]) => [k, sanitizeStr(v)]))
+          : f.properties
+      }))
+    }
+  }
+
   const handleLayerUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
     const name = file.name
     const ext = name.split('.').pop().toLowerCase()
+
+    // SECURITY: Límite de tamaño para GeoTIFF (100MB)
+    const MAX_TIFF_SIZE = 100 * 1024 * 1024
+    if ((ext === 'tif' || ext === 'tiff') && file.size > MAX_TIFF_SIZE) {
+      alert('El archivo GeoTIFF supera el límite de 100MB. Usa un archivo más pequeño.')
+      e.target.value = ''
+      return
+    }
     
     try {
       if (ext === 'kmz') {
@@ -880,7 +944,7 @@ export default function App() {
           const { kml } = await import('@tmcw/togeojson')
           const text = await kmlFile.async('text')
           const dom = new DOMParser().parseFromString(text, 'text/xml')
-          const geojson = kml(dom)
+          const geojson = sanitizeGeoJSON(kml(dom)) // SECURITY: sanitizar
           setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
         } else {
           alert('No se encontró archivo .kml dentro del KMZ')
@@ -889,11 +953,11 @@ export default function App() {
         const { kml } = await import('@tmcw/togeojson')
         const text = await file.text()
         const dom = new DOMParser().parseFromString(text, 'text/xml')
-        const geojson = kml(dom)
+        const geojson = sanitizeGeoJSON(kml(dom)) // SECURITY: sanitizar
         setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
       } else if (ext === 'geojson' || ext === 'json') {
         const text = await file.text()
-        const geojson = JSON.parse(text)
+        const geojson = sanitizeGeoJSON(JSON.parse(text)) // SECURITY: sanitizar
         setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
       } else if (ext === 'tif' || ext === 'tiff') {
         const { default: parseGeoraster } = await import('georaster')
@@ -1001,7 +1065,20 @@ export default function App() {
 
   // ─── CLOUD SYNC (Direct to Google Drive) ───
   const handleDriveSync = useCallback(async () => {
-    if (!driveToken) return
+    // SECURITY: Verificar token vigente
+    if (!isDriveTokenValid()) {
+      setDriveToken(null)
+      setTokenExpiry(null)
+      alert('La sesión de Google Drive expiró. Por favor reconecta.')
+      return
+    }
+    // SECURITY: Rate limiting — mínimo 5 segundos entre sincronizaciones
+    const MIN_INTERVAL = 5_000
+    if (Date.now() - lastSyncRef.current < MIN_INTERVAL) {
+      alert('Por favor espera unos segundos antes de sincronizar de nuevo.')
+      return
+    }
+    lastSyncRef.current = Date.now()
     setIsSyncing(true)
     try {
       const blob = await generateZipBlob()
@@ -1064,12 +1141,13 @@ export default function App() {
       console.error("Drive sync error", err)
       alert(`❌ Error al subir a Drive.\n${err.message}`)
       if (err.message.includes('Invalid Credentials') || err.message.includes('Auth')) {
-        setDriveToken(null) // Reset token if expired
+        setDriveToken(null)
+        setTokenExpiry(null) // SECURITY: limpiar expiración junto al token
       }
     } finally {
       setIsSyncing(false)
     }
-  }, [stations, driveToken])
+  }, [stations, driveToken, tokenExpiry])
 
 
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)

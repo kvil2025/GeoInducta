@@ -63,18 +63,30 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
+// 7. Colores por tipo de roca caja
+const ROCA_COLORS = {
+  'Granodiorita':  '#EF4444',
+  'Tonalita':      '#F97316',
+  'Granito':       '#8B5CF6',
+  'Pórfido Q-Fsp': '#EC4899',
+  'Andesita':      '#6366F1',
+  'Brecha':        '#F59E0B',
+  'Skarn':         '#10B981',
+  'Mármol':        '#06B6D4',
+  'Cuarcita':      '#84CC16',
+  'Metapelita':    '#14B8A6',
+  'Otro':          '#94A3B8',
+}
+
 const createStationIcon = (muestras) => {
-  const h = muestras[0]?.horizonte || ''
-  const color = h.includes('Pedolito') ? '#F59E0B'
-    : h.includes('Saprolito') ? '#8B5CF6'
-    : h === 'Roca Fresca' ? '#3B82F6'
-    : '#B91C1C'
-  const count = muestras.length
+  const roca   = muestras[0]?.rocaCaja || ''
+  const color  = ROCA_COLORS[roca] || '#D4AF37'
+  const count  = muestras.length
   return L.divIcon({
     className: '',
     html: `<div style="position:relative;width:32px;height:32px;">
       <div style="width:28px;height:28px;border-radius:50% 50% 50% 0;
-        background:${color};border:2.5px solid #D4AF37;transform:rotate(-45deg);
+        background:${color};border:2.5px solid #fff;transform:rotate(-45deg);
         box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>
       ${count > 1 ? `<div style="position:absolute;top:-5px;right:-5px;
         width:17px;height:17px;border-radius:50%;background:#D4AF37;color:#000;
@@ -626,6 +638,10 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
       m.xm = String(utm.easting)
       m.ym = String(utm.northing)
     }
+    // 11. Auto-fill elevación desde GPS si disponible
+    if (nextCorrelativos?.gpsAltitude != null) {
+      m.elevation = String(Math.round(nextCorrelativos.gpsAltitude))
+    }
     return [m]
   }
 
@@ -732,7 +748,7 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, externalLayers, onRemoveLayer }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, externalLayers, onRemoveLayer }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
@@ -759,34 +775,20 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
-          {externalLayers && externalLayers.length > 0 && (
-            <div style={{ marginBottom: 16, padding: '0 4px' }}>
-              <div style={{ color: '#D4AF37', fontWeight: 700, fontSize: 11, letterSpacing: '0.1em', marginBottom: 6 }}>🗺️ CAPAS EXTERNAS</div>
-              {externalLayers.map(l => (
-                <div key={l.id} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: 6, marginBottom: 4,
-                  border: '1px solid rgba(255,255,255,0.1)'
-                }}>
-                  <span style={{ fontSize: 11, color: '#ccc', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{l.name}</span>
-                  <button onClick={() => onRemoveLayer(l.id)} style={{ background: 'none', border: 'none', color: '#B91C1C', cursor: 'pointer', fontSize: 12 }}>✕</button>
-                </div>
-              ))}
-            </div>
-          )}
-
           {stations.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#8E8E93', marginTop: 48, fontSize: 13 }}>
+            <div style={{ textAlign: 'center', color: '#555', paddingTop: 60, fontSize: 13, lineHeight: 1.8 }}>
               <div style={{ fontSize: 36, marginBottom: 10 }}>🗺️</div>
               Sin puntos aún.<br />Toca el mapa para comenzar.
             </div>
           ) : stations.map((s, i) => {
             const fCnt = s.muestras.reduce((a, m) => a + (m.fotos?.length || 0), 0)
             const hasAudio = s.muestras.some(m => m.audioBlob)
+            const rocaColor = ROCA_COLORS[s.muestras[0]?.rocaCaja] || '#D4AF37'
             return (
               <div key={s.id || i} className="fade-in" style={{
                 background: '#1A1A1C', borderRadius: 12, padding: '12px 14px',
-                marginBottom: 8, border: '1px solid rgba(212,175,55,0.12)',
+                marginBottom: 8, border: `1px solid ${rocaColor}33`,
+                borderLeft: `3px solid ${rocaColor}`,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
@@ -802,8 +804,7 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
                       }}>+{s.muestras.length - 2}</span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                    <span style={{ color: '#555', fontSize: 10 }}>#{i + 1}</span>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     <button onClick={() => onEditStation(s)} disabled={isBusy} style={{
                       background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.3)',
                       color: '#D4AF37', borderRadius: 6, padding: '3px 8px', fontSize: 11,
@@ -871,6 +872,18 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
             }}>
               {isExporting ? '⏳ Generando ZIP...' : '📦 Guardar ZIP Localmente'}
             </button>
+
+            {/* 13. Exportar CSV directo */}
+            <button onClick={onExportCSV} disabled={isBusy} style={{
+              width: '100%', padding: '10px', borderRadius: 12,
+              background: 'transparent',
+              border: '1px solid rgba(99,102,241,0.35)',
+              color: '#818CF8', fontSize: 12, fontWeight: 600,
+              cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+              📊 Exportar CSV (rápido)
+            </button>
           </div>
         )}
       </div>
@@ -897,9 +910,14 @@ export default function App() {
   const [editingStation, setEditingStation] = useState(null)
   const [clickPosition, setClickPosition] = useState(null)
   const [gpsPosition, setGpsPosition] = useState(null)
+  const [gpsAltitude, setGpsAltitude] = useState(null)   // 11. Elevación GPS
   const [showSidebar, setShowSidebar] = useState(false)
+  const [showListView, setShowListView] = useState(false) // 8. Vista de lista
   const [mapCenter] = useState([-33.45, -70.65])
   const [activeLayer, setActiveLayer] = useState('osm')
+  // 9. Deshacer eliminación
+  const [lastDeleted, setLastDeleted] = useState(null)
+  const undoTimerRef = useRef(null)
   
   const [isExporting, setIsExporting] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -991,6 +1009,66 @@ export default function App() {
     saveStations([])
   }, [])
 
+  // 9. Eliminar estación individual con posibilidad de deshacer
+  const handleDeleteStation = useCallback((id) => {
+    setStations(prev => {
+      const deleted = prev.find(s => s.id === id)
+      if (!deleted) return prev
+      setLastDeleted(deleted)
+      clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = setTimeout(() => setLastDeleted(null), 6000)
+      const next = prev.filter(s => s.id !== id)
+      localforage.setItem('geoinducta_stations', next).catch(console.error)
+      return next
+    })
+  }, [])
+
+  const handleUndoDelete = useCallback(() => {
+    if (!lastDeleted) return
+    clearTimeout(undoTimerRef.current)
+    setStations(prev => {
+      const next = [...prev, lastDeleted].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      localforage.setItem('geoinducta_stations', next).catch(console.error)
+      return next
+    })
+    setLastDeleted(null)
+  }, [lastDeleted])
+
+  // 13. Exportar CSV directo (sin ZIP)
+  const handleExportCSV = useCallback(() => {
+    const COLS = [
+      'CP','IDSAMPLE','Elevation','Xm','Ym','From','To',
+      'HORIZONTE','ROCA CAJA','ESTRUCTURA','RUMBO','MANTEO',
+      'MINERALOGÍA','ALTERACION','MINERALIZACION','COMENTARIO',
+      'TAKEN BY','SEMANA','UTM_ZONA','UTM_ESTE','UTM_NORTE','Lat_DD','Lng_DD','Fecha'
+    ]
+    const rows = [COLS.join(',')]
+    stations.forEach(s => {
+      const utm = latLngToUTM(s.position.lat, s.position.lng)
+      s.muestras.forEach(m => {
+        const altStr = Object.entries(m.alteracion || {})
+          .filter(([,v]) => v).map(([k,v]) => `${k}:${v}`).join('; ')
+        const rocaFull = m.rocaCaja + (m.rocaCajaCustom ? ` — ${m.rocaCajaCustom}` : '')
+        const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
+        rows.push([
+          esc(m.cp), esc(m.idSample), m.elevation, m.xm, m.ym, m.from, m.to,
+          esc(m.horizonte), esc(rocaFull), esc(m.estructura), m.rumbo, m.manteo,
+          esc((m.mineralogia||[]).join('; ')), esc(altStr), esc(m.mineralizacion),
+          esc(m.comentario), esc(m.takenBy), m.semana,
+          utm.zone, utm.easting, utm.northing,
+          s.position.lat, s.position.lng, s.createdAt
+        ].join(','))
+      })
+    })
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `GeoINducta_${new Date().toISOString().slice(0,10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [stations])
+
   // ─── CORRELATIVOS: lee el último punto guardado (localforage) y calcula el siguiente ───
   const getNextCorrelativos = useCallback(() => {
     if (stations.length === 0) return { nextCp: '', nextIdSample: '', takenBy: '', semana: '' }
@@ -1001,6 +1079,7 @@ export default function App() {
       nextIdSample: nextCorrelativo(lastMuestra.idSample),
       takenBy:      lastMuestra.takenBy  || '',
       semana:       lastMuestra.semana   || '',
+      gpsAltitude:  gpsAltitude,
     }
   }, [stations])
 
@@ -1310,7 +1389,10 @@ export default function App() {
           maxZoom={TILE_LAYERS[activeLayer].maxZoom}
         />
         <MapClickHandler />
-        <GPSTracker onPosition={setGpsPosition} />
+        <GPSTracker onPosition={(pos) => {
+          setGpsPosition(pos)
+          if (pos?.altitude != null) setGpsAltitude(pos.altitude)
+        }} />
 
         {gpsPosition && <Marker position={gpsPosition} icon={gpsIcon}><Popup>Tu posición actual</Popup></Marker>}
 
@@ -1378,7 +1460,33 @@ export default function App() {
             setShowForm(true)
             setShowSidebar(false)
           }}
+          onDeleteStation={handleDeleteStation}
+          onExportCSV={handleExportCSV}
         />
+      )}
+
+      {/* 9. Toast deshacer eliminación */}
+      {lastDeleted && (
+        <div style={{
+          position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(20,20,22,0.97)', backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(185,28,28,0.5)', borderRadius: 12,
+          padding: '12px 18px', zIndex: 2000, display: 'flex', alignItems: 'center', gap: 12,
+          fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+          animation: 'fadeIn .2s ease'
+        }}>
+          <span style={{ fontSize: 13, color: '#ccc' }}>
+            🗑️ Punto <b style={{ color: '#D4AF37' }}>{lastDeleted.muestras[0]?.cp}</b> eliminado
+          </span>
+          <button onClick={handleUndoDelete} style={{
+            background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.4)',
+            color: '#D4AF37', borderRadius: 8, padding: '5px 12px', fontSize: 12,
+            fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif'
+          }}>↩️ Deshacer</button>
+          <button onClick={() => { clearTimeout(undoTimerRef.current); setLastDeleted(null) }} style={{
+            background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 14
+          }}>×</button>
+        </div>
       )}
 
       {showForm && (

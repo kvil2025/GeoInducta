@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, ImageOverlay } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import localforage from 'localforage'
@@ -194,6 +194,86 @@ const labelSt = {
 }
 
 // ─── COMPONENTS ──────────────────────────────────────────────────────────────
+
+// Modal para ingresar coordenadas de un PDF no georeferenciado
+function PdfGeoreferenceModal({ name, imageUrl, onConfirm, onCancel }) {
+  const [coords, setCoords] = useState({ north: '', south: '', east: '', west: '' })
+  const set = (k, v) => setCoords(p => ({ ...p, [k]: v }))
+  const valid = ['north','south','east','west'].every(k => coords[k] !== '' && !isNaN(+coords[k]))
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 4000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+    }}>
+      <div style={{
+        background: '#111', borderRadius: 16, padding: 20, width: '100%', maxWidth: 420,
+        border: '1px solid rgba(239,68,68,0.3)', fontFamily: 'Inter, sans-serif',
+        display: 'flex', flexDirection: 'column', gap: 14,
+        boxShadow: '0 24px 64px rgba(0,0,0,0.7)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ color: '#F87171', fontWeight: 700, fontSize: 14 }}>📄 Georreferenciar PDF</span>
+          <button onClick={onCancel} style={{ background: 'none', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer' }}>×</button>
+        </div>
+
+        <p style={{ color: '#888', fontSize: 11, lineHeight: 1.5 }}>
+          El PDF <b style={{ color: '#ccc' }}>{name}</b> no tiene coordenadas embebidas.<br />
+          Ingresa los límites geográficos de la imagen (WGS84):
+        </p>
+
+        {/* Preview miniatura */}
+        <img src={imageUrl} alt="preview" style={{
+          width: '100%', maxHeight: 140, objectFit: 'contain',
+          borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0a0a0b',
+        }} />
+
+        {/* Inputs de coordenadas */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {[
+            { key: 'north', label: '⬆️ Latitud Norte', placeholder: 'Ej: -29.500' },
+            { key: 'south', label: '⬇️ Latitud Sur',  placeholder: 'Ej: -30.200' },
+            { key: 'west',  label: '⬅️ Longitud Oeste', placeholder: 'Ej: -71.500' },
+            { key: 'east',  label: '➡️ Longitud Este',  placeholder: 'Ej: -70.800' },
+          ].map(({ key, label, placeholder }) => (
+            <div key={key}>
+              <div style={{ fontSize: 10, color: '#666', marginBottom: 4, fontWeight: 600 }}>{label}</div>
+              <input
+                type="number" step="any" value={coords[key]}
+                onChange={e => set(key, e.target.value)}
+                placeholder={placeholder}
+                style={{
+                  width: '100%', background: '#1a1a1c', border: '1px solid rgba(239,68,68,0.25)',
+                  borderRadius: 8, color: '#fff', fontSize: 13, padding: '8px 10px', outline: 'none',
+                  fontFamily: 'Inter, sans-serif',
+                }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{
+            flex: 1, padding: '10px', borderRadius: 10, background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.1)', color: '#888', cursor: 'pointer',
+            fontSize: 12, fontFamily: 'Inter, sans-serif',
+          }}>Cancelar</button>
+          <button disabled={!valid} onClick={() => onConfirm({
+            north: +coords.north, south: +coords.south,
+            east: +coords.east, west: +coords.west,
+          })} style={{
+            flex: 2, padding: '10px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+            background: valid ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${valid ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.08)'}`,
+            color: valid ? '#F87171' : '#555',
+            cursor: valid ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif',
+          }}>📌 Colocar en el mapa</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function GeoTiffLayer({ georaster }) {
   const map = useMap()
   useEffect(() => {
@@ -748,7 +828,7 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, onLoadFromDrive, isLoadingDrive, externalLayers, onRemoveLayer, hiddenCampaigns, onToggleCampaign, onDeleteCampaign }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, onLoadFromDrive, isLoadingDrive, externalLayers, onRemoveLayer, onLayerOpacity, hiddenCampaigns, onToggleCampaign, onDeleteCampaign }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
@@ -981,6 +1061,46 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
             )}
           </div>
         )}
+
+        {/* Capas externas activas con opacidad */}
+        {externalLayers.length > 0 && (
+          <div style={{ marginTop: 4 }}>
+            <div style={{ fontSize: 10, color: '#555', fontWeight: 600, textTransform: 'uppercase',
+              letterSpacing: '0.08em', marginBottom: 6 }}>
+              Capas cargadas
+            </div>
+            {externalLayers.map(l => (
+              <div key={l.id} style={{
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: 8, padding: '7px 10px', marginBottom: 5,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: l.type === 'pdf-overlay' ? 6 : 0 }}>
+                  <span style={{ fontSize: 12 }}>
+                    {l.type === 'pdf-overlay' ? '📄' : l.type === 'geotiff' ? '🗻️' : '🗺️'}
+                  </span>
+                  <span style={{ flex: 1, fontSize: 11, color: '#ccc', overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
+                  <button onClick={() => onRemoveLayer(l.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
+                      color: '#555', padding: '0 2px' }}>×</button>
+                </div>
+                {l.type === 'pdf-overlay' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 9, color: '#555', flexShrink: 0 }}>Opacidad</span>
+                    <input type="range" min="0" max="1" step="0.05"
+                      value={l.opacity ?? 0.75}
+                      onChange={e => onLayerOpacity(l.id, +e.target.value)}
+                      style={{ flex: 1, accentColor: '#F87171', cursor: 'pointer', height: 3 }}
+                    />
+                    <span style={{ fontSize: 9, color: '#888', flexShrink: 0, width: 28, textAlign: 'right' }}>
+                      {Math.round((l.opacity ?? 0.75) * 100)}%
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <DestructiveModal 
@@ -1030,6 +1150,8 @@ export default function App() {
 
   const [externalLayers, setExternalLayers] = useState([])
   const fileInputRef = useRef(null)
+  const pdfInputRef  = useRef(null)
+  const [pdfPending, setPdfPending] = useState(null) // { name, imageUrl } esperando coords
 
   // SECURITY: Verifica si el token de Drive sigue vigente (con 60s de margen)
   const isDriveTokenValid = () =>
@@ -1433,6 +1555,79 @@ export default function App() {
     }
   }
 
+  // ─── CARGAR PDF GEOREFERENCIADO ───────────────────────────────────────────────
+  const handlePdfUpload = useCallback(async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    e.target.value = ''
+    const MAX_PDF = 50 * 1024 * 1024 // 50 MB
+    if (file.size > MAX_PDF) { alert('El PDF supera el límite de 50 MB.'); return }
+
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      // Import PDF.js dinámicamente
+      const pdfjsLib = await import('pdfjs-dist')
+      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href
+
+      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+      const page  = await pdfDoc.getPage(1)
+
+      // Intentar extraer metadatos geográficos (GeoPDF / XMP)
+      let autoBounds = null
+      try {
+        const meta = await pdfDoc.getMetadata()
+        const xmp  = meta?.info?.Custom || {}
+        // Algunos GeoPDF exportan BBOX en campos personalizados
+        if (xmp.BBOX || xmp.bbox) {
+          const parts = (xmp.BBOX || xmp.bbox).split(',')
+          if (parts.length === 4) {
+            autoBounds = { west: +parts[0], south: +parts[1], east: +parts[2], north: +parts[3] }
+          }
+        }
+      } catch (_) { /* no metadata */ }
+
+      // Renderizar página 1 a canvas PNG
+      const viewport = page.getViewport({ scale: 2.0 })
+      const canvas   = document.createElement('canvas')
+      canvas.width   = viewport.width
+      canvas.height  = viewport.height
+      const ctx = canvas.getContext('2d')
+      await page.render({ canvasContext: ctx, viewport }).promise
+      const imageUrl = canvas.toDataURL('image/png')
+
+      if (autoBounds) {
+        // Bounds encontrados automáticamente
+        setExternalLayers(prev => [...prev, {
+          id: crypto.randomUUID(), type: 'pdf-overlay',
+          name: file.name.replace('.pdf',''), imageUrl, bounds: autoBounds, opacity: 0.75,
+        }])
+        alert(`✅ PDF cargado con coordenadas automáticas`)
+      } else {
+        // Pedir coordenadas al usuario
+        setPdfPending({ name: file.name.replace('.pdf',''), imageUrl })
+      }
+    } catch (err) {
+      console.error('PDF load error', err)
+      alert('Error al cargar PDF: ' + err.message)
+    }
+  }, [])
+
+  // ─── GUARDAR PDF CON BOUNDS MANUALES ─────────────────────────────────────────
+  const handlePdfGeoref = useCallback((bounds) => {
+    if (!pdfPending) return
+    setExternalLayers(prev => [...prev, {
+      id: crypto.randomUUID(), type: 'pdf-overlay',
+      name: pdfPending.name, imageUrl: pdfPending.imageUrl, bounds, opacity: 0.75,
+    }])
+    setPdfPending(null)
+  }, [pdfPending])
+
+  // ─── CAMBIAR OPACIDAD CAPA PDF ───────────────────────────────────────────────────
+  const handleLayerOpacity = useCallback((id, opacity) => {
+    setExternalLayers(prev => prev.map(l => l.id === id ? { ...l, opacity } : l))
+  }, [])
+
+  // ─── HANDLE LAYER UPLOAD ───────────────────────────────────────────────────────
   const handleLayerUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -1704,6 +1899,12 @@ export default function App() {
             fontFamily: 'Inter, sans-serif'
           }}>+ 🗺️ Capa</button>
           <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff" style={{ display: 'none' }} />
+          <button onClick={() => pdfInputRef.current?.click()} style={{
+            background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
+            color: '#F87171', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif'
+          }}>+ 📄 PDF Geo</button>
+          <input type="file" ref={pdfInputRef} onChange={handlePdfUpload} accept=".pdf" style={{ display: 'none' }} />
           
           {gpsPosition && (
             <span style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, background: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }}>
@@ -1738,6 +1939,10 @@ export default function App() {
             return <GeoJSON key={layer.id} data={layer.data} style={{ color: '#3B82F6', weight: 2, opacity: 0.8 }} />
           } else if (layer.type === 'geotiff') {
             return <GeoTiffLayer key={layer.id} georaster={layer.georaster} />
+          } else if (layer.type === 'pdf-overlay') {
+            return <ImageOverlay key={layer.id} url={layer.imageUrl}
+              bounds={[[layer.bounds.south, layer.bounds.west],[layer.bounds.north, layer.bounds.east]]}
+              opacity={layer.opacity ?? 0.8} />
           }
           return null
         })}
@@ -1792,6 +1997,7 @@ export default function App() {
           loginToDrive={loginToDrive}
           externalLayers={externalLayers}
           onRemoveLayer={(id) => setExternalLayers(prev => prev.filter(l => l.id !== id))}
+          onLayerOpacity={handleLayerOpacity}
           hiddenCampaigns={hiddenCampaigns}
           onToggleCampaign={(name) => setHiddenCampaigns(prev => {
             const next = new Set(prev)
@@ -1818,8 +2024,17 @@ export default function App() {
           isLoadingDrive={isLoadingDrive}
         />
       )}
+      {/* Modal georreferencia PDF */}
+      {pdfPending && (
+        <PdfGeoreferenceModal
+          name={pdfPending.name}
+          imageUrl={pdfPending.imageUrl}
+          onConfirm={handlePdfGeoref}
+          onCancel={() => setPdfPending(null)}
+        />
+      )}
 
-      {/* Modal selector de backups Drive — multi-selecci\u00f3n */}
+      {/* Modal selector de backups Drive — multi-selección */}
       {driveFiles && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', zIndex: 3000,

@@ -967,6 +967,7 @@ export default function App() {
   const lastSyncRef = useRef(0)
   const [driveFiles, setDriveFiles] = useState(null)   // lista backups Drive
   const [isLoadingDrive, setIsLoadingDrive] = useState(false)
+  const [selectedDriveFiles, setSelectedDriveFiles] = useState([]) // multi-selección
 
   const [externalLayers, setExternalLayers] = useState([])
   const fileInputRef = useRef(null)
@@ -1120,11 +1121,13 @@ export default function App() {
       // Reconstruir URLs de fotos (solo las que tengan file blob)
       const clean = restored.map(s => ({
         ...s,
+        campaignSource: fileName, // tag de origen
         muestras: s.muestras.map(m => ({ ...m, fotos: (m.fotos||[]).map(f => ({ ...f, url: f.file ? URL.createObjectURL(f.file) : null })) }))
       }))
 
       saveStations(clean)
       setDriveFiles(null)
+      setSelectedDriveFiles([])
       alert(`✅ ${clean.length} estaciones restauradas desde "${fileName}"`)
     } catch (err) {
       console.error('Restore error', err)
@@ -1133,6 +1136,77 @@ export default function App() {
       setIsLoadingDrive(false)
     }
   }, [driveToken])
+
+  // ─── MERGE MULTI-CAMPANA ─────────────────────────────────────────────────────
+  const parseZip = useCallback(async (fileId, fileName) => {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { Authorization: `Bearer ${driveToken}` } }
+    )
+    const arrayBuffer = await res.arrayBuffer()
+    const { default: JSZip } = await import('jszip')
+    const zip = await JSZip.loadAsync(arrayBuffer)
+    let restored = null
+    const stationsFile = zip.file('stations.json')
+    if (stationsFile) {
+      restored = JSON.parse(await stationsFile.async('text'))
+    } else {
+      const geojsonFile = zip.file('muestras.geojson')
+      if (geojsonFile) {
+        const geojson = JSON.parse(await geojsonFile.async('text'))
+        const byStation = {}
+        geojson.features.forEach(f => {
+          const p = f.properties
+          const sid = p.stationId || p.CP || crypto.randomUUID()
+          if (!byStation[sid]) byStation[sid] = { id: sid, position: { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] }, createdAt: p.Fecha || new Date().toISOString(), muestras: [] }
+          byStation[sid].muestras.push({ _id: crypto.randomUUID(), cp: p.CP, idSample: p.IDSAMPLE, horizonte: p.HORIZONTE, rocaCaja: p['ROCA CAJA'] || p.ROCA_CAJA, estructura: p.ESTRUCTURA, rumbo: p.RUMBO, manteo: p.MANTEO, mineralizacion: p.MINERALIZACION, comentario: p.COMENTARIO, takenBy: p['TAKEN BY'] || p.TAKEN_BY, semana: p.SEMANA, elevation: p.ELEVATION, xm: p.UTM_ESTE, ym: p.UTM_NORTE, fotos: [], alteracion: {} })
+        })
+        restored = Object.values(byStation)
+      }
+    }
+    if (!restored) return []
+    return restored.map(s => ({
+      ...s,
+      id: s.id || crypto.randomUUID(),
+      campaignSource: fileName,
+      muestras: s.muestras.map(m => ({ ...m, fotos: (m.fotos||[]).map(f => ({ ...f, url: f.file ? URL.createObjectURL(f.file) : null })) }))
+    }))
+  }, [driveToken])
+
+  const handleMergeCampaigns = useCallback(async (files, replaceAll) => {
+    if (!files.length) return
+    setIsLoadingDrive(true)
+    try {
+      // Descargar todos en paralelo
+      const results = await Promise.all(files.map(f => parseZip(f.id, f.name)))
+      const incoming = results.flat()
+      if (!incoming.length) { alert('No se encontraron datos en los archivos.'); return }
+
+      if (replaceAll) {
+        saveStations(incoming)
+        alert(`✅ ${incoming.length} estaciones cargadas (${files.length} campaña${files.length > 1 ? 's' : ''})`)
+      } else {
+        // Merge: agrega las que no existan (por id)
+        setStations(prev => {
+          const existingIds = new Set(prev.map(s => s.id))
+          const nuevas = incoming.filter(s => !existingIds.has(s.id))
+          const merged = [...prev, ...nuevas].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+          localforage.setItem('geoinducta_stations', merged).catch(console.error)
+          const added = nuevas.length
+          const dupes = incoming.length - added
+          setTimeout(() => alert(`✅ +${added} estaciones agregadas${dupes ? ` (${dupes} ya existían)` : ''} · Total: ${merged.length}`), 100)
+          return merged
+        })
+      }
+      setDriveFiles(null)
+      setSelectedDriveFiles([])
+    } catch (err) {
+      console.error('Merge error', err)
+      alert('Error al cargar campañas: ' + err.message)
+    } finally {
+      setIsLoadingDrive(false)
+    }
+  }, [parseZip])
   const handleDeleteStation = useCallback((id) => {
     setStations(prev => {
       const deleted = prev.find(s => s.id === id)
@@ -1668,43 +1742,104 @@ export default function App() {
         />
       )}
 
-      {/* Modal selector de backups Drive */}
+      {/* Modal selector de backups Drive — multi-selecci\u00f3n */}
       {driveFiles && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 3000,
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', zIndex: 3000,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
         }}>
           <div style={{
-            background: '#111', borderRadius: 16, padding: 20, width: '100%', maxWidth: 380,
-            border: '1px solid rgba(212,175,55,0.2)', maxHeight: '80vh', display: 'flex', flexDirection: 'column',
-            fontFamily: 'Inter, sans-serif',
+            background: '#111', borderRadius: 16, padding: 20, width: '100%', maxWidth: 400,
+            border: '1px solid rgba(212,175,55,0.25)', maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            fontFamily: 'Inter, sans-serif', boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: 13 }}>📥 Backups en Google Drive</span>
-              <button onClick={() => setDriveFiles(null)} style={{ background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer' }}>×</button>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: 14 }}>📥 Campañas en Google Drive</span>
+              <button onClick={() => { setDriveFiles(null); setSelectedDriveFiles([]) }}
+                style={{ background: 'none', border: 'none', color: '#888', fontSize: 20, cursor: 'pointer' }}>×</button>
             </div>
-            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {driveFiles.map(f => (
-                <button key={f.id} onClick={() => handleRestoreFromFile(f.id, f.name)}
-                  disabled={isLoadingDrive}
-                  style={{
-                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 10, padding: '10px 12px', cursor: 'pointer', textAlign: 'left',
-                  }}>
-                  <div style={{ color: '#fff', fontSize: 12, fontWeight: 600, marginBottom: 3 }}>{f.name}</div>
-                  <div style={{ color: '#555', fontSize: 10 }}>
-                    {new Date(f.createdTime).toLocaleString('es-CL')}
-                    {f.size && ` · ${(f.size/1024).toFixed(0)} KB`}
+            <p style={{ color: '#666', fontSize: 11, marginBottom: 12 }}>
+              Selecciona una o más campañas para cargar
+            </p>
+
+            {/* Lista con checkboxes */}
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+              {driveFiles.map(f => {
+                const isSelected = selectedDriveFiles.some(s => s.id === f.id)
+                return (
+                  <div key={f.id}
+                    onClick={() => setSelectedDriveFiles(prev =>
+                      isSelected ? prev.filter(s => s.id !== f.id) : [...prev, f]
+                    )}
+                    style={{
+                      background: isSelected ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${isSelected ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                      borderRadius: 10, padding: '10px 12px', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s',
+                    }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                      border: `2px solid ${isSelected ? '#D4AF37' : '#444'}`,
+                      background: isSelected ? '#D4AF37' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {isSelected && <span style={{ color: '#000', fontSize: 11, fontWeight: 900 }}>✓</span>}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
+                      <div style={{ color: '#555', fontSize: 10, marginTop: 2 }}>
+                        {new Date(f.createdTime).toLocaleString('es-CL')}
+                        {f.size && ` · ${(f.size/1024).toFixed(0)} KB`}
+                      </div>
+                    </div>
                   </div>
-                </button>
-              ))}
+                )
+              })}
             </div>
-            <p style={{ color: '#666', fontSize: 10, marginTop: 12, textAlign: 'center' }}>
-              ⚠️ Los datos actuales serán reemplazados por el backup seleccionado.
+
+            {/* Contador seleccionados */}
+            {selectedDriveFiles.length > 0 && (
+              <div style={{ margin: '10px 0 0', padding: '6px 10px', background: 'rgba(212,175,55,0.08)',
+                borderRadius: 8, fontSize: 11, color: '#D4AF37', textAlign: 'center' }}>
+                {selectedDriveFiles.length} campaña{selectedDriveFiles.length > 1 ? 's' : ''} seleccionada{selectedDriveFiles.length > 1 ? 's' : ''}
+              </div>
+            )}
+
+            {/* Botones de acción */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button
+                disabled={!selectedDriveFiles.length || isLoadingDrive}
+                onClick={() => handleMergeCampaigns(selectedDriveFiles, false)}
+                style={{
+                  flex: 1, padding: '11px 8px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                  background: selectedDriveFiles.length ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${selectedDriveFiles.length ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                  color: selectedDriveFiles.length ? '#60A5FA' : '#555',
+                  cursor: selectedDriveFiles.length ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif',
+                }}>
+                {isLoadingDrive ? '⏳' : '➕ Agregar al mapa'}
+              </button>
+              <button
+                disabled={!selectedDriveFiles.length || isLoadingDrive}
+                onClick={() => handleMergeCampaigns(selectedDriveFiles, true)}
+                style={{
+                  flex: 1, padding: '11px 8px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                  background: selectedDriveFiles.length ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${selectedDriveFiles.length ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                  color: selectedDriveFiles.length ? '#D4AF37' : '#555',
+                  cursor: selectedDriveFiles.length ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif',
+                }}>
+                {isLoadingDrive ? '⏳' : '🔄 Reemplazar todo'}
+              </button>
+            </div>
+            <p style={{ color: '#444', fontSize: 9, marginTop: 8, textAlign: 'center' }}>
+              "Agregar" fusiona sin borrar lo actual · "Reemplazar" borra el mapa actual
             </p>
           </div>
         </div>
       )}
+
 
       {/* 9. Toast deshacer eliminación */}
       {lastDeleted && (

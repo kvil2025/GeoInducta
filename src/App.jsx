@@ -748,7 +748,7 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, externalLayers, onRemoveLayer }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, onLoadFromDrive, isLoadingDrive, externalLayers, onRemoveLayer }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
@@ -834,20 +834,50 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
           )}
         </div>
 
-        {stations.length > 0 && (
-          <div style={{ padding: '12px 16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {!driveToken ? (
-              <button onClick={loginToDrive} disabled={isBusy} style={{
-                width: '100%', padding: '13px', borderRadius: 12,
-                background: '#fff', color: '#000', fontSize: 13, fontWeight: 700,
-                cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
+        {/* Drive: siempre visible para conectar antes de agregar puntos */}
+        <div style={{ padding: '12px 16px 8px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {!driveToken ? (
+            <button onClick={loginToDrive} disabled={isBusy} style={{
+              width: '100%', padding: '13px', borderRadius: 12,
+              background: '#fff', color: '#000', fontSize: 13, fontWeight: 700,
+              cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              border: '1px solid #ccc'
+            }}>
+              <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width={16} alt="G" />
+              Conectar Google Drive
+            </button>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                background: 'rgba(16,185,129,0.08)', borderRadius: 10, border: '1px solid rgba(16,185,129,0.25)' }}>
+                <span style={{ fontSize: 16 }}>✅</span>
+                <span style={{ fontSize: 12, color: '#10B981', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>
+                  Google Drive conectado
+                </span>
+                <button onClick={() => { loginToDrive() }} style={{
+                  marginLeft: 'auto', background: 'none', border: 'none',
+                  color: '#555', fontSize: 10, cursor: 'pointer', fontFamily: 'Inter, sans-serif'
+                }}>cambiar</button>
+              </div>
+              {/* Cargar desde Drive */}
+              <button onClick={onLoadFromDrive} disabled={isLoadingDrive} style={{
+                width: '100%', padding: '11px', borderRadius: 12,
+                background: isLoadingDrive ? '#333' : 'rgba(59,130,246,0.12)',
+                border: '1px solid rgba(59,130,246,0.35)',
+                color: isLoadingDrive ? '#888' : '#60A5FA', fontSize: 12, fontWeight: 600,
+                cursor: isLoadingDrive ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                border: '1px solid #ccc'
               }}>
-                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width={16} alt="G" />
-                Conectar Google Drive
+                {isLoadingDrive ? '⏳ Buscando en Drive...' : '📥 Cargar campana desde Drive'}
               </button>
-            ) : (
+            </div>
+          )}
+        </div>
+
+        {stations.length > 0 && (
+          <div style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {driveToken && (
               <button onClick={onDriveSync} disabled={isBusy} style={{
                 width: '100%', padding: '13px', borderRadius: 12,
                 background: isBusy ? '#333' : 'linear-gradient(135deg, #10B981, #047857)',
@@ -873,7 +903,6 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
               {isExporting ? '⏳ Generando ZIP...' : '📦 Guardar ZIP Localmente'}
             </button>
 
-            {/* 13. Exportar CSV directo */}
             <button onClick={onExportCSV} disabled={isBusy} style={{
               width: '100%', padding: '10px', borderRadius: 12,
               background: 'transparent',
@@ -885,7 +914,6 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
               📊 Exportar CSV (rápido)
             </button>
 
-            {/* 14. Exportar Shapefile */}
             <button onClick={onExportSHP} disabled={isBusy} style={{
               width: '100%', padding: '10px', borderRadius: 12,
               background: 'transparent',
@@ -935,8 +963,10 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
   const [driveToken, setDriveToken] = useState(null)
-  const [tokenExpiry, setTokenExpiry] = useState(null) // SECURITY: control de expiración
-  const lastSyncRef = useRef(0) // SECURITY: rate limiting de Drive sync
+  const [tokenExpiry, setTokenExpiry] = useState(null)
+  const lastSyncRef = useRef(0)
+  const [driveFiles, setDriveFiles] = useState(null)   // lista backups Drive
+  const [isLoadingDrive, setIsLoadingDrive] = useState(false)
 
   const [externalLayers, setExternalLayers] = useState([])
   const fileInputRef = useRef(null)
@@ -949,7 +979,6 @@ export default function App() {
   const loginToDrive = useGoogleLogin({
     onSuccess: (tokenResponse) => {
       setDriveToken(tokenResponse.access_token)
-      // Google tokens duran 3600 segundos; guardamos la expiración exacta
       setTokenExpiry(Date.now() + (tokenResponse.expires_in ?? 3600) * 1000)
     },
     onError: () => alert('Error al iniciar sesión con Google'),
@@ -1021,7 +1050,89 @@ export default function App() {
     saveStations([])
   }, [])
 
-  // 9. Eliminar estación individual con posibilidad de deshacer
+  // ─── CARGAR DESDE DRIVE ───────────────────────────────────────────────────
+  const handleLoadFromDrive = useCallback(async () => {
+    if (!isDriveTokenValid()) {
+      alert('Reconecta Google Drive primero.')
+      return
+    }
+    setIsLoadingDrive(true)
+    try {
+      // Listar archivos GeoINducta ZIP en Drive
+      const q = encodeURIComponent("name contains 'GeoINducta' and mimeType='application/zip' and trashed=false")
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime+desc&fields=files(id,name,createdTime,size)&pageSize=20`,
+        { headers: { Authorization: `Bearer ${driveToken}` } }
+      )
+      const data = await res.json()
+      if (!data.files || data.files.length === 0) {
+        alert('No se encontraron backups de GeoINducta en tu Drive.\nGuarda primero desde el celular.')
+        setIsLoadingDrive(false)
+        return
+      }
+      setDriveFiles(data.files)
+    } catch (err) {
+      console.error('Drive list error', err)
+      alert('Error al leer Drive: ' + err.message)
+    } finally {
+      setIsLoadingDrive(false)
+    }
+  }, [driveToken, tokenExpiry])
+
+  const handleRestoreFromFile = useCallback(async (fileId, fileName) => {
+    setIsLoadingDrive(true)
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        { headers: { Authorization: `Bearer ${driveToken}` } }
+      )
+      const arrayBuffer = await res.arrayBuffer()
+      const { default: JSZip } = await import('jszip')
+      const zip = await JSZip.loadAsync(arrayBuffer)
+
+      // Intentar leer stations.json primero (backup completo)
+      let restored = null
+      const stationsFile = zip.file('stations.json')
+      if (stationsFile) {
+        const json = await stationsFile.async('text')
+        restored = JSON.parse(json)
+      } else {
+        // Fallback: leer GeoJSON y reconstruir estaciones básicas
+        const geojsonFile = zip.file('muestras.geojson')
+        if (geojsonFile) {
+          const geojson = JSON.parse(await geojsonFile.async('text'))
+          const byStation = {}
+          geojson.features.forEach(f => {
+            const p = f.properties
+            const sid = p.stationId || p.CP || crypto.randomUUID()
+            if (!byStation[sid]) byStation[sid] = { id: sid, position: { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] }, createdAt: p.Fecha || new Date().toISOString(), muestras: [] }
+            byStation[sid].muestras.push({ _id: crypto.randomUUID(), cp: p.CP, idSample: p.IDSAMPLE, horizonte: p.HORIZONTE, rocaCaja: p['ROCA CAJA'] || p.ROCA_CAJA, estructura: p.ESTRUCTURA, rumbo: p.RUMBO, manteo: p.MANTEO, mineralizacion: p.MINERALIZACION, comentario: p.COMENTARIO, takenBy: p['TAKEN BY'] || p.TAKEN_BY, semana: p.SEMANA, elevation: p.ELEVATION, xm: p.UTM_ESTE, ym: p.UTM_NORTE, fotos: [], alteracion: {} })
+          })
+          restored = Object.values(byStation)
+        }
+      }
+
+      if (!restored || restored.length === 0) {
+        alert('No se pudieron leer datos del archivo.')
+        return
+      }
+
+      // Reconstruir URLs de fotos (solo las que tengan file blob)
+      const clean = restored.map(s => ({
+        ...s,
+        muestras: s.muestras.map(m => ({ ...m, fotos: (m.fotos||[]).map(f => ({ ...f, url: f.file ? URL.createObjectURL(f.file) : null })) }))
+      }))
+
+      saveStations(clean)
+      setDriveFiles(null)
+      alert(`✅ ${clean.length} estaciones restauradas desde "${fileName}"`)
+    } catch (err) {
+      console.error('Restore error', err)
+      alert('Error al restaurar: ' + err.message)
+    } finally {
+      setIsLoadingDrive(false)
+    }
+  }, [driveToken])
   const handleDeleteStation = useCallback((id) => {
     setStations(prev => {
       const deleted = prev.find(s => s.id === id)
@@ -1311,6 +1422,13 @@ export default function App() {
       }
     }
 
+    // stations.json — backup completo para restaurar en cualquier navegador
+    const stationsForExport = stations.map(s => ({
+      ...s,
+      muestras: s.muestras.map(m => ({ ...m, audioBlob: undefined, fotos: (m.fotos||[]).map(f => ({ ...f, file: undefined, url: undefined })) }))
+    }))
+    zip.file('stations.json', JSON.stringify(stationsForExport, null, 2))
+
     return await zip.generateAsync({ type: 'blob' })
   }
 
@@ -1545,7 +1663,47 @@ export default function App() {
           onDeleteStation={handleDeleteStation}
           onExportCSV={handleExportCSV}
           onExportSHP={handleExportSHP}
+          onLoadFromDrive={handleLoadFromDrive}
+          isLoadingDrive={isLoadingDrive}
         />
+      )}
+
+      {/* Modal selector de backups Drive */}
+      {driveFiles && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 3000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        }}>
+          <div style={{
+            background: '#111', borderRadius: 16, padding: 20, width: '100%', maxWidth: 380,
+            border: '1px solid rgba(212,175,55,0.2)', maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+            fontFamily: 'Inter, sans-serif',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: 13 }}>📥 Backups en Google Drive</span>
+              <button onClick={() => setDriveFiles(null)} style={{ background: 'none', border: 'none', color: '#888', fontSize: 18, cursor: 'pointer' }}>×</button>
+            </div>
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {driveFiles.map(f => (
+                <button key={f.id} onClick={() => handleRestoreFromFile(f.id, f.name)}
+                  disabled={isLoadingDrive}
+                  style={{
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 10, padding: '10px 12px', cursor: 'pointer', textAlign: 'left',
+                  }}>
+                  <div style={{ color: '#fff', fontSize: 12, fontWeight: 600, marginBottom: 3 }}>{f.name}</div>
+                  <div style={{ color: '#555', fontSize: 10 }}>
+                    {new Date(f.createdTime).toLocaleString('es-CL')}
+                    {f.size && ` · ${(f.size/1024).toFixed(0)} KB`}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p style={{ color: '#666', fontSize: 10, marginTop: 12, textAlign: 'center' }}>
+              ⚠️ Los datos actuales serán reemplazados por el backup seleccionado.
+            </p>
+          </div>
+        </div>
       )}
 
       {/* 9. Toast deshacer eliminación */}

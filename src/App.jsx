@@ -748,12 +748,23 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, onLoadFromDrive, isLoadingDrive, externalLayers, onRemoveLayer }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, onLoadFromDrive, isLoadingDrive, externalLayers, onRemoveLayer, hiddenCampaigns, onToggleCampaign, onDeleteCampaign }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
 
   const isBusy = isExporting || isSyncing
+
+  // Campanas únicas cargadas
+  const CAMP_COLORS = ['#60A5FA','#F59E0B','#A78BFA','#34D399','#F87171','#FB923C','#E879F9','#22D3EE']
+  const campaigns = [...new Set(stations.map(s => s.campaignSource ?? '__current__'))]
+    .map((name, i) => ({
+      name,
+      label: name === '__current__' ? '🔧 Campo actual' : name.replace(/GeoINducta_?/,'').replace('.zip',''),
+      color: CAMP_COLORS[i % CAMP_COLORS.length],
+      count: stations.filter(s => (s.campaignSource ?? '__current__') === name).length,
+      hidden: hiddenCampaigns?.has(name) ?? false,
+    }))
 
   return (
     <>
@@ -780,7 +791,7 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
               <div style={{ fontSize: 36, marginBottom: 10 }}>🗺️</div>
               Sin puntos aún.<br />Toca el mapa para comenzar.
             </div>
-          ) : stations.map((s, i) => {
+          ) : visibleStations.map((s, i) => {
             const fCnt = s.muestras.reduce((a, m) => a + (m.fotos?.length || 0), 0)
             const hasAudio = s.muestras.some(m => m.audioBlob)
             const rocaColor = ROCA_COLORS[s.muestras[0]?.rocaCaja] || '#D4AF37'
@@ -924,6 +935,50 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
             }}>
               🗺️ Exportar Shapefile (QGIS / ArcGIS)
             </button>
+
+            {/* Panel de campañas — filtro visual y de exportación */}
+            {campaigns.length > 1 && (
+              <div style={{ marginTop: 4 }}>
+                <div style={{ fontSize: 10, color: '#555', fontWeight: 600, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', marginBottom: 6 }}>
+                  Campañas cargadas
+                </div>
+                {campaigns.map(c => (
+                  <div key={c.name} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
+                    borderRadius: 8, marginBottom: 4,
+                    background: c.hidden ? 'rgba(255,255,255,0.02)' : `${c.color}10`,
+                    border: `1px solid ${c.hidden ? 'rgba(255,255,255,0.06)' : c.color + '35'}`,
+                    opacity: c.hidden ? 0.5 : 1, transition: 'all 0.15s',
+                  }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 11, color: '#ccc', overflow: 'hidden',
+                      textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.label}>
+                      {c.label}
+                    </span>
+                    <span style={{ fontSize: 10, color: '#555', flexShrink: 0 }}>{c.count}p</span>
+                    {/* Toggle visibilidad */}
+                    <button onClick={() => onToggleCampaign(c.name)} title={c.hidden ? 'Mostrar' : 'Ocultar'}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14,
+                        padding: '0 2px', lineHeight: 1 }}>
+                      {c.hidden ? '👁️‍🗨️' : '👁️'}
+                    </button>
+                    {/* Eliminar campaña */}
+                    {c.name !== '__current__' && (
+                      <button onClick={() => { if(confirm(`¿Eliminar todos los puntos de "${c.label}"?`)) onDeleteCampaign(c.name) }}
+                        title="Eliminar campaña del mapa"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
+                          padding: '0 2px', lineHeight: 1, color: '#555' }}>
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <p style={{ fontSize: 9, color: '#444', marginTop: 4 }}>
+                  👁️ oculta del mapa y de la exportación
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -968,6 +1023,10 @@ export default function App() {
   const [driveFiles, setDriveFiles] = useState(null)   // lista backups Drive
   const [isLoadingDrive, setIsLoadingDrive] = useState(false)
   const [selectedDriveFiles, setSelectedDriveFiles] = useState([]) // multi-selección
+  const [hiddenCampaigns, setHiddenCampaigns] = useState(new Set()) // campanas ocultas
+
+  // ─── ESTACIONES VISIBLES (filtradas por campaña) ──────────────────────────────────
+  const visibleStations = stations.filter(s => !hiddenCampaigns.has(s.campaignSource ?? '__current__'))
 
   const [externalLayers, setExternalLayers] = useState([])
   const fileInputRef = useRef(null)
@@ -1233,6 +1292,8 @@ export default function App() {
 
   // 13. Exportar CSV directo (sin ZIP)
   const handleExportCSV = useCallback(() => {
+    const exportList = visibleStations
+    if (exportList.length === 0) { alert('No hay puntos visibles para exportar.'); return }
     const COLS = [
       'CP','IDSAMPLE','Elevation','Xm','Ym','From','To',
       'HORIZONTE','ROCA CAJA','ESTRUCTURA','RUMBO','MANTEO',
@@ -1240,7 +1301,7 @@ export default function App() {
       'TAKEN BY','SEMANA','UTM_ZONA','UTM_ESTE','UTM_NORTE','Lat_DD','Lng_DD','Fecha'
     ]
     const rows = [COLS.join(',')]
-    stations.forEach(s => {
+    exportList.forEach(s => {
       const utm = latLngToUTM(s.position.lat, s.position.lng)
       s.muestras.forEach(m => {
         const altStr = Object.entries(m.alteracion || {})
@@ -1264,18 +1325,19 @@ export default function App() {
     a.download = `GeoINducta_${new Date().toISOString().slice(0,10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
-  }, [stations])
+  }, [visibleStations])
 
   // SHP export — Shapefile compatible con QGIS y ArcGIS
   const handleExportSHP = useCallback(async () => {
-    if (stations.length === 0) { alert('No hay puntos para exportar.'); return }
+    const exportList = visibleStations
+    if (exportList.length === 0) { alert('No hay puntos visibles para exportar.'); return }
     try {
       // Importación dinámica para no penalizar el bundle inicial
       const shpwrite = (await import('@mapbox/shp-write')).default
 
       // Construir GeoJSON — nombres de campo máx 10 chars (límite DBF)
       const features = []
-      stations.forEach(s => {
+      exportList.forEach(s => {
         const utm = latLngToUTM(s.position.lat, s.position.lng)
         s.muestras.forEach(m => {
           const altStr  = Object.entries(m.alteracion || {})
@@ -1334,7 +1396,7 @@ export default function App() {
       console.error('SHP export error', err)
       alert('Error al generar Shapefile: ' + err.message)
     }
-  }, [stations])
+  }, [visibleStations])
 
   // ─── CORRELATIVOS: lee el último punto guardado (localforage) y calcula el siguiente ───
   const getNextCorrelativos = useCallback(() => {
@@ -1427,12 +1489,13 @@ export default function App() {
 
   // ─── CORE ZIP GENERATOR ───
   const generateZipBlob = async () => {
+    const exportList = visibleStations
     const { default: JSZip } = await import('jszip')
     const zip = new JSZip()
     const fotosDir  = zip.folder('fotos')
     const audiosDir = zip.folder('audios')
 
-    const features = stations.flatMap(s =>
+    const features = exportList.flatMap(s =>
       s.muestras.map(m => {
         const altStr = Object.entries(m.alteracion)
           .filter(([, v]) => v).map(([k, v]) => `${k}:${v}`).join('; ')
@@ -1729,6 +1792,20 @@ export default function App() {
           loginToDrive={loginToDrive}
           externalLayers={externalLayers}
           onRemoveLayer={(id) => setExternalLayers(prev => prev.filter(l => l.id !== id))}
+          hiddenCampaigns={hiddenCampaigns}
+          onToggleCampaign={(name) => setHiddenCampaigns(prev => {
+            const next = new Set(prev)
+            if (next.has(name)) next.delete(name); else next.add(name)
+            return next
+          })}
+          onDeleteCampaign={(name) => {
+            setStations(prev => {
+              const next = prev.filter(s => (s.campaignSource ?? '__current__') !== name)
+              localforage.setItem('geoinducta_stations', next).catch(console.error)
+              return next
+            })
+            setHiddenCampaigns(prev => { const n = new Set(prev); n.delete(name); return n })
+          }}
           onEditStation={(s) => {
             setEditingStation(s)
             setShowForm(true)
@@ -1887,6 +1964,7 @@ export default function App() {
         </div>
       )}
 
+      {/* Botón GPS — solo posiciona el marcador */}
       <button onClick={() => {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
@@ -1895,12 +1973,40 @@ export default function App() {
           )
         }
       }} style={{
-        position: 'fixed', bottom: 40, right: 12, zIndex: 999,
+        position: 'fixed', bottom: 96, right: 12, zIndex: 999,
         background: 'rgba(10,10,11,0.9)', border: '1px solid rgba(212,175,55,0.3)',
         color: '#fff', borderRadius: '50%', width: 44, height: 44,
         cursor: 'pointer', fontSize: 20, backdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }} title="Activar GPS">🛰️</button>
+      }} title="Mostrar posición GPS">🛡️</button>
+
+      {/* Botón REGISTRAR EN GPS — abre formulario directo en posición actual */}
+      <button onClick={() => {
+        if (!navigator.geolocation) { alert('GPS no disponible en este dispositivo'); return }
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+            setGpsPosition(latlng)
+            setClickPosition(latlng)
+            setEditingStation(null)
+            setShowForm(true)
+            setShowSidebar(false)
+          },
+          () => alert('No se pudo obtener la posición GPS.\nVerifica que el GPS esté activo y que hayas dado permiso.'),
+          { enableHighAccuracy: true, timeout: 10000 }
+        )
+      }} style={{
+        position: 'fixed', bottom: 40, right: 12, zIndex: 999,
+        background: 'linear-gradient(135deg, #059669, #065f46)',
+        border: '1px solid rgba(16,185,129,0.5)',
+        color: '#fff', borderRadius: 14, padding: '10px 16px',
+        cursor: 'pointer', fontSize: 13, fontWeight: 700,
+        backdropFilter: 'blur(8px)', fontFamily: 'Inter, sans-serif',
+        display: 'flex', alignItems: 'center', gap: 6,
+        boxShadow: '0 4px 20px rgba(5,150,105,0.4)',
+      }} title="Registrar punto en mi posición GPS">
+        📍 Registrar aquí
+      </button>
     </div>
   )
 }

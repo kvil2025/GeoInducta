@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mapbox/shp-write": "^0.4.3",
     "@react-oauth/google": "^0.13.5",
     "@tmcw/togeojson": "^7.1.2",
     "browser-image-compression": "^2.0.2",

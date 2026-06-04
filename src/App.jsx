@@ -748,7 +748,7 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, externalLayers, onRemoveLayer }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, externalLayers, onRemoveLayer }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
@@ -883,6 +883,18 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
               📊 Exportar CSV (rápido)
+            </button>
+
+            {/* 14. Exportar Shapefile */}
+            <button onClick={onExportSHP} disabled={isBusy} style={{
+              width: '100%', padding: '10px', borderRadius: 12,
+              background: 'transparent',
+              border: '1px solid rgba(16,185,129,0.35)',
+              color: '#34D399', fontSize: 12, fontWeight: 600,
+              cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+              🗺️ Exportar Shapefile (QGIS / ArcGIS)
             </button>
           </div>
         )}
@@ -1067,6 +1079,76 @@ export default function App() {
     a.download = `GeoINducta_${new Date().toISOString().slice(0,10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
+  }, [stations])
+
+  // SHP export — Shapefile compatible con QGIS y ArcGIS
+  const handleExportSHP = useCallback(async () => {
+    if (stations.length === 0) { alert('No hay puntos para exportar.'); return }
+    try {
+      // Importación dinámica para no penalizar el bundle inicial
+      const shpwrite = (await import('@mapbox/shp-write')).default
+
+      // Construir GeoJSON — nombres de campo máx 10 chars (límite DBF)
+      const features = []
+      stations.forEach(s => {
+        const utm = latLngToUTM(s.position.lat, s.position.lng)
+        s.muestras.forEach(m => {
+          const altStr  = Object.entries(m.alteracion || {})
+            .filter(([,v]) => v).map(([k,v]) => `${k}:${v}`).join('; ')
+          const rocaFull = (m.rocaCaja + (m.rocaCajaCustom ? ` ${m.rocaCajaCustom}` : '')).substring(0, 80)
+          features.push({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [s.position.lng, s.position.lat] },
+            properties: {
+              CP:         (m.cp        || '').substring(0, 20),
+              IDSAMPLE:   (m.idSample  || '').substring(0, 20),
+              ELEVATION:  m.elevation  || '',
+              XM:         m.xm         || '',
+              YM:         m.ym         || '',
+              FROM_M:     m.from       || '',
+              TO_M:       m.to         || '',
+              HORIZONTE:  (m.horizonte  || '').substring(0, 30),
+              ROCA_CAJA:  rocaFull,
+              ESTRUCTURA: (m.estructura || '').substring(0, 30),
+              RUMBO:      m.rumbo      || '',
+              MANTEO:     m.manteo     || '',
+              MINERALOG:  ((m.mineralogia||[]).join('; ')).substring(0, 100),
+              ALTERACION: altStr.substring(0, 100),
+              MINERALIZ:  (m.mineralizacion || '').substring(0, 20),
+              COMENTARIO: (m.comentario    || '').substring(0, 200),
+              TAKEN_BY:   (m.takenBy       || '').substring(0, 50),
+              SEMANA:     m.semana     || '',
+              UTM_ZONA:   utm.zone,
+              UTM_ESTE:   utm.easting,
+              UTM_NORTE:  utm.northing,
+              LAT_DD:     s.position.lat,
+              LNG_DD:     s.position.lng,
+              FECHA:      (s.createdAt || '').substring(0, 20),
+            }
+          })
+        })
+      })
+
+      const geojson = { type: 'FeatureCollection', features }
+      const fecha   = new Date().toISOString().slice(0, 10)
+
+      const blob = await shpwrite.zip(geojson, {
+        folder:      'GeoINducta',
+        filename:    `muestras_${fecha}`,
+        outputType:  'blob',
+        compression: 'DEFLATE',
+      })
+
+      const url = URL.createObjectURL(blob)
+      const a   = document.createElement('a')
+      a.href    = url
+      a.download = `GeoINducta_SHP_${fecha}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('SHP export error', err)
+      alert('Error al generar Shapefile: ' + err.message)
+    }
   }, [stations])
 
   // ─── CORRELATIVOS: lee el último punto guardado (localforage) y calcula el siguiente ───
@@ -1462,6 +1544,7 @@ export default function App() {
           }}
           onDeleteStation={handleDeleteStation}
           onExportCSV={handleExportCSV}
+          onExportSHP={handleExportSHP}
         />
       )}
 

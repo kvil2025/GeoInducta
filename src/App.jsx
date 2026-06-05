@@ -828,7 +828,7 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, onLoadFromDrive, isLoadingDrive, externalLayers, onRemoveLayer, onLayerOpacity, hiddenCampaigns, onToggleCampaign, onDeleteCampaign }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, onLoadFromDrive, isLoadingDrive, externalLayers, onRemoveLayer, onLayerOpacity, hiddenCampaigns, onToggleCampaign, onDeleteCampaign, isUnlocked, onRequestUnlock }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
@@ -969,51 +969,51 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
         {stations.length > 0 && (
           <div style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {driveToken && (
-              <button onClick={onDriveSync} disabled={isBusy} style={{
+              <button onClick={isUnlocked ? onDriveSync : onRequestUnlock} disabled={isBusy} style={{
                 width: '100%', padding: '13px', borderRadius: 12,
-                background: isBusy ? '#333' : 'linear-gradient(135deg, #10B981, #047857)',
-                border: '1px solid rgba(16, 185, 129, 0.4)',
-                color: isBusy ? '#888' : '#fff', fontSize: 13, fontWeight: 700,
+                background: !isUnlocked ? 'rgba(212,175,55,0.08)' : isBusy ? '#333' : 'linear-gradient(135deg, #10B981, #047857)',
+                border: !isUnlocked ? '1px solid rgba(212,175,55,0.25)' : '1px solid rgba(16, 185, 129, 0.4)',
+                color: !isUnlocked ? '#D4AF37' : isBusy ? '#888' : '#fff', fontSize: 13, fontWeight: 700,
                 cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 transition: 'all 0.3s'
               }}>
-                {isSyncing ? '⏳ Subiendo a Drive...' : '☁️ Guardar en mi Drive'}
+                {!isUnlocked ? '🔒 Guardar en Drive (desbloquear)' : isSyncing ? '⏳ Subiendo a Drive...' : '☁️ Guardar en mi Drive'}
               </button>
             )}
             
-            <button onClick={onExport} disabled={isBusy} style={{
+            <button onClick={isUnlocked ? onExport : onRequestUnlock} disabled={isBusy} style={{
               width: '100%', padding: '13px', borderRadius: 12,
-              background: isBusy ? '#333' : 'transparent',
-              border: '1px solid rgba(212,175,55,0.3)',
-              color: isBusy ? '#888' : '#D4AF37', fontSize: 13, fontWeight: 600,
+              background: !isUnlocked ? 'rgba(212,175,55,0.06)' : isBusy ? '#333' : 'transparent',
+              border: !isUnlocked ? '1px solid rgba(212,175,55,0.2)' : '1px solid rgba(212,175,55,0.3)',
+              color: !isUnlocked ? '#D4AF37' : isBusy ? '#888' : '#D4AF37', fontSize: 13, fontWeight: 600,
               cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               transition: 'all 0.3s'
             }}>
-              {isExporting ? '⏳ Generando ZIP...' : '📦 Guardar ZIP Localmente'}
+              {!isUnlocked ? '🔒 Guardar ZIP (desbloquear)' : isExporting ? '⏳ Generando ZIP...' : '📦 Guardar ZIP Localmente'}
             </button>
 
-            <button onClick={onExportCSV} disabled={isBusy} style={{
+            <button onClick={isUnlocked ? onExportCSV : onRequestUnlock} disabled={isBusy} style={{
               width: '100%', padding: '10px', borderRadius: 12,
               background: 'transparent',
-              border: '1px solid rgba(99,102,241,0.35)',
-              color: '#818CF8', fontSize: 12, fontWeight: 600,
+              border: !isUnlocked ? '1px solid rgba(212,175,55,0.2)' : '1px solid rgba(99,102,241,0.35)',
+              color: !isUnlocked ? '#D4AF37' : '#818CF8', fontSize: 12, fontWeight: 600,
               cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
-              📊 Exportar CSV (rápido)
+              {!isUnlocked ? '🔒 Exportar CSV (desbloquear)' : '📊 Exportar CSV (rápido)'}
             </button>
 
-            <button onClick={onExportSHP} disabled={isBusy} style={{
+            <button onClick={isUnlocked ? onExportSHP : onRequestUnlock} disabled={isBusy} style={{
               width: '100%', padding: '10px', borderRadius: 12,
               background: 'transparent',
-              border: '1px solid rgba(16,185,129,0.35)',
-              color: '#34D399', fontSize: 12, fontWeight: 600,
+              border: !isUnlocked ? '1px solid rgba(212,175,55,0.2)' : '1px solid rgba(16,185,129,0.35)',
+              color: !isUnlocked ? '#D4AF37' : '#34D399', fontSize: 12, fontWeight: 600,
               cursor: isBusy ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
-              🗺️ Exportar Shapefile (QGIS / ArcGIS)
+              {!isUnlocked ? '🔒 Exportar Shapefile (desbloquear)' : '🗺️ Exportar Shapefile (QGIS / ArcGIS)'}
             </button>
 
             {/* Panel de campañas — filtro visual y de exportación */}
@@ -1138,6 +1138,114 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
   )
 }
 
+// ─── FREEMIUM CONFIG ─────────────────────────────────────────────────────────
+const FREEMIUM_LIMIT = 3
+// Formspree endpoint — reemplazar con tu propio form ID en formspree.io
+const FORMSPREE_URL = 'https://formspree.io/f/xpwrjkgq'
+
+// ─── UNLOCK MODAL ────────────────────────────────────────────────────────────
+function UnlockModal({ isOpen, onUnlock }) {
+  const [name, setName]       = useState('')
+  const [email, setEmail]     = useState('')
+  const [company, setCompany] = useState('')
+  const [sending, setSending] = useState(false)
+  const [error, setError]     = useState('')
+
+  if (!isOpen) return null
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!email.includes('@')) { setError('Ingresa un email válido'); return }
+    setSending(true)
+    setError('')
+    try {
+      await fetch(FORMSPREE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ name, email, company, app: 'GeoSoil', source: window.location.hostname }),
+      })
+    } catch (_) { /* si falla el envío igual desbloqueamos */ }
+    localStorage.setItem('geosoil_unlocked', 'true')
+    localStorage.setItem('geosoil_user_email', email)
+    setSending(false)
+    onUnlock()
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9000,
+      background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div style={{
+        background: '#111113', border: '1px solid rgba(212,175,55,0.3)',
+        borderRadius: 20, padding: '32px 28px', maxWidth: 380, width: '100%',
+        boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+      }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🔓</div>
+          <h2 style={{ color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: 20,
+            fontWeight: 800, margin: 0, marginBottom: 6 }}>
+            Desbloquea <span style={{ color: '#D4AF37' }}>Geo<span style={{color:'#fff'}}>S</span>oil</span> gratis
+          </h2>
+          <p style={{ color: '#8E8E93', fontSize: 13, fontFamily: 'Inter, sans-serif',
+            margin: 0, lineHeight: 1.5 }}>
+            Has usado {FREEMIUM_LIMIT} puntos de prueba.<br />
+            Ingresa tu email para <strong style={{color:'#D4AF37'}}>acceso ilimitado gratuito</strong>.
+          </p>
+        </div>
+
+        {/* Beneficios */}
+        <div style={{
+          background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.15)',
+          borderRadius: 12, padding: '12px 14px', marginBottom: 20,
+        }}>
+          {['✅ Puntos ilimitados','✅ Exportar CSV / Shapefile','✅ Backup en Google Drive',
+            '✅ PDF georeferenciado','✅ Completamente gratis'].map(b => (
+            <div key={b} style={{ fontSize: 12, color: '#ccc', fontFamily: 'Inter, sans-serif',
+              padding: '3px 0' }}>{b}</div>
+          ))}
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input value={name} onChange={e => setName(e.target.value)}
+            placeholder="Tu nombre" required
+            style={{ background: '#1A1A1C', border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 13,
+              fontFamily: 'Inter, sans-serif', outline: 'none' }} />
+          <input value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="Tu email *" type="email" required
+            style={{ background: '#1A1A1C', border: '1px solid rgba(212,175,55,0.3)',
+              borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 13,
+              fontFamily: 'Inter, sans-serif', outline: 'none' }} />
+          <input value={company} onChange={e => setCompany(e.target.value)}
+            placeholder="Empresa (opcional)"
+            style={{ background: '#1A1A1C', border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 10, padding: '11px 14px', color: '#fff', fontSize: 13,
+              fontFamily: 'Inter, sans-serif', outline: 'none' }} />
+          {error && <p style={{ color: '#F87171', fontSize: 12, margin: 0,
+            fontFamily: 'Inter, sans-serif' }}>{error}</p>}
+          <button type="submit" disabled={sending} style={{
+            background: sending ? '#333' : 'linear-gradient(135deg, #D4AF37, #92741F)',
+            border: 'none', borderRadius: 12, padding: '14px',
+            color: sending ? '#666' : '#000', fontSize: 14, fontWeight: 800,
+            cursor: sending ? 'wait' : 'pointer', fontFamily: 'Inter, sans-serif',
+            marginTop: 4, transition: 'all 0.2s',
+          }}>
+            {sending ? '⏳ Desbloqueando...' : '🚀 Desbloquear GeoSoil gratis'}
+          </button>
+        </form>
+        <p style={{ textAlign: 'center', fontSize: 10, color: '#444',
+          fontFamily: 'Inter, sans-serif', marginTop: 12, marginBottom: 0 }}>
+          Sin spam · Sin tarjeta · 100% gratis
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
 export default function App() {
   const [stations, setStations] = useState([])
@@ -1158,6 +1266,9 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
   const [driveToken, setDriveToken] = useState(null)
+  // ─── FREEMIUM ───
+  const [isUnlocked, setIsUnlocked] = useState(() => localStorage.getItem('geosoil_unlocked') === 'true')
+  const [showUnlockModal, setShowUnlockModal] = useState(false)
   const [tokenExpiry, setTokenExpiry] = useState(null)
   const lastSyncRef = useRef(0)
   const [driveFiles, setDriveFiles] = useState(null)   // lista backups Drive
@@ -1237,6 +1348,11 @@ export default function App() {
   function MapClickHandler() {
     useMapEvents({
       click(e) {
+        // FREEMIUM: bloquear si se supera el límite
+        if (!isUnlocked && stations.length >= FREEMIUM_LIMIT) {
+          setShowUnlockModal(true)
+          return
+        }
         setClickPosition(e.latlng)
         setEditingStation(null)
         setShowForm(true)
@@ -1976,6 +2092,18 @@ export default function App() {
               📍 GPS
             </span>
           )}
+          {/* FREEMIUM BADGE */}
+          {!isUnlocked && (
+            <button onClick={() => setShowUnlockModal(true)} style={{
+              padding: '3px 8px', borderRadius: 8, fontSize: 11,
+              background: stations.length >= FREEMIUM_LIMIT ? 'rgba(239,68,68,0.15)' : 'rgba(212,175,55,0.1)',
+              color: stations.length >= FREEMIUM_LIMIT ? '#F87171' : '#D4AF37',
+              border: `1px solid ${stations.length >= FREEMIUM_LIMIT ? 'rgba(239,68,68,0.35)' : 'rgba(212,175,55,0.3)'}`,
+              cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: 600,
+            }}>
+              {stations.length >= FREEMIUM_LIMIT ? '🔒 Desbloquear' : `📡 ${stations.length}/${FREEMIUM_LIMIT} puntos`}
+            </button>
+          )}
           {totalMuestras > 0 && (
             <span style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, background: 'rgba(212,175,55,0.1)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>
               {totalMuestras} muestras
@@ -2087,6 +2215,8 @@ export default function App() {
           onExportSHP={handleExportSHP}
           onLoadFromDrive={handleLoadFromDrive}
           isLoadingDrive={isLoadingDrive}
+          isUnlocked={isUnlocked}
+          onRequestUnlock={() => setShowUnlockModal(true)}
         />
       )}
       {/* Modal georreferencia PDF */}
@@ -2281,6 +2411,8 @@ export default function App() {
 
       {/* Botón REGISTRAR EN GPS — abre formulario directo en posición actual */}
       <button onClick={() => {
+        // FREEMIUM: bloquear si se supera el límite
+        if (!isUnlocked && stations.length >= FREEMIUM_LIMIT) { setShowUnlockModal(true); return }
         if (!navigator.geolocation) { alert('GPS no disponible en este dispositivo'); return }
         navigator.geolocation.getCurrentPosition(
           pos => {
@@ -2304,8 +2436,14 @@ export default function App() {
         display: 'flex', alignItems: 'center', gap: 6,
         boxShadow: '0 4px 20px rgba(5,150,105,0.4)',
       }} title="Registrar punto en mi posición GPS">
-        📍 Registrar aquí
+        📍 {!isUnlocked && stations.length >= FREEMIUM_LIMIT ? '🔒 Desbloquear para registrar' : 'Registrar aquí'}
       </button>
+
+      {/* EMAIL GATE MODAL */}
+      <UnlockModal
+        isOpen={showUnlockModal}
+        onUnlock={() => { setIsUnlocked(true); setShowUnlockModal(false) }}
+      />
     </div>
   )
 }

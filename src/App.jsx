@@ -871,7 +871,7 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
               <div style={{ fontSize: 36, marginBottom: 10 }}>🗺️</div>
               Sin puntos aún.<br />Toca el mapa para comenzar.
             </div>
-          ) : visibleStations.map((s, i) => {
+          ) : stations.map((s, i) => {
             const fCnt = s.muestras.reduce((a, m) => a + (m.fotos?.length || 0), 0)
             const hasAudio = s.muestras.some(m => m.audioBlob)
             const rocaColor = ROCA_COLORS[s.muestras[0]?.rocaCaja] || '#D4AF37'
@@ -1953,14 +1953,8 @@ export default function App() {
             style={{ background: 'none', border: 'none', color: showSidebar ? '#D4AF37' : '#8E8E93', fontSize: 20, cursor: 'pointer' }}>
             ☰
           </button>
-          <span style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.04em', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: 7 }}>
-            <img src="https://www.geologgia.cl/images/Logo_Geo.svg" alt="Geologgia"
-              style={{ height: 24, opacity: 0.9, filter: 'brightness(1.3)' }}
-              onError={e => { e.target.style.display='none' }} />
+          <span style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.04em', fontFamily: 'Inter, sans-serif' }}>
             Geo<span style={{ color: '#D4AF37' }}>S</span>oil
-            <img src="https://www.tecknologia.cl/logo-tecknologia.png?v=3" alt="Tecknologia"
-              style={{ height: 18, opacity: 0.8 }}
-              onError={e => { e.target.style.display='none' }} />
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2259,12 +2253,31 @@ export default function App() {
           )
         }
       }} style={{
-        position: 'fixed', bottom: 96, right: 12, zIndex: 999,
+        position: 'fixed', bottom: 96, right: 12, zIndex: 1600,
         background: 'rgba(10,10,11,0.9)', border: '1px solid rgba(212,175,55,0.3)',
         color: '#fff', borderRadius: '50%', width: 44, height: 44,
         cursor: 'pointer', fontSize: 20, backdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }} title="Mostrar posición GPS">🛡️</button>
+
+      {/* LOGOS BRANDING — esquina inferior derecha */}
+      <div style={{
+        position: 'fixed', bottom: 148, right: 12, zIndex: 1600,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+        background: 'rgba(10,10,11,0.75)', backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10,
+        padding: '7px 10px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src="https://www.geologgia.cl/images/Logo_Geo.svg" alt="Geologgia"
+            style={{ height: 18, opacity: 0.8, filter: 'brightness(1.2)' }}
+            onError={e => { e.target.style.display='none' }} />
+          <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.15)' }} />
+          <img src="https://www.tecknologia.cl/logo-tecknologia.png?v=3" alt="Tecknologia"
+            style={{ height: 14, opacity: 0.75 }}
+            onError={e => { e.target.style.display='none' }} />
+        </div>
+      </div>
 
       {/* Botón REGISTRAR EN GPS — abre formulario directo en posición actual */}
       <button onClick={() => {
@@ -2282,7 +2295,7 @@ export default function App() {
           { enableHighAccuracy: true, timeout: 10000 }
         )
       }} style={{
-        position: 'fixed', bottom: 40, right: 12, zIndex: 999,
+        position: 'fixed', bottom: 40, right: 12, zIndex: 1600,
         background: 'linear-gradient(135deg, #059669, #065f46)',
         border: '1px solid rgba(16,185,129,0.5)',
         color: '#fff', borderRadius: 14, padding: '10px 16px',

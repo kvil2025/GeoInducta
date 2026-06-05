@@ -12,9 +12,9 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 10000000, // 10MB limit for parsing libraries
       },
       manifest: {
-        name: 'GeoINducta',
-        short_name: 'GeoINducta',
-        description: 'App web de levantamiento geológico de campo',
+        name: 'GeoSoil',
+        short_name: 'GeoSoil',
+        description: 'App de levantamiento geológico · Geologgia Ltda. & Tecknologia',
         theme_color: '#0A0A0B',
         background_color: '#0A0A0B',
         display: 'standalone',

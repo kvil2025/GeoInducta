@@ -840,7 +840,7 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
   const campaigns = [...new Set(stations.map(s => s.campaignSource ?? '__current__'))]
     .map((name, i) => ({
       name,
-      label: name === '__current__' ? '🔧 Campo actual' : name.replace(/GeoINducta_?/,'').replace('.zip',''),
+      label: name === '__current__' ? '🔧 Campo actual' : name.replace(/GeoSoil_?/,'').replace('.zip',''),
       color: CAMP_COLORS[i % CAMP_COLORS.length],
       count: stations.filter(s => (s.campaignSource ?? '__current__') === name).length,
       hidden: hiddenCampaigns?.has(name) ?? false,
@@ -1103,6 +1103,26 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
         )}
       </div>
 
+      {/* BRANDING FOOTER */}
+      <div style={{
+        padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        background: 'rgba(0,0,0,0.4)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+          <img src="https://www.geologgia.cl/images/Logo_Geo.svg" alt="Geologgia"
+            style={{ height: 22, opacity: 0.85, filter: 'brightness(1.2)' }}
+            onError={e => { e.target.style.display='none' }} />
+          <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.12)' }} />
+          <img src="https://www.tecknologia.cl/logo-tecknologia.png?v=3" alt="Tecknologia"
+            style={{ height: 18, opacity: 0.85, filter: 'brightness(1.1)' }}
+            onError={e => { e.target.style.display='none' }} />
+        </div>
+        <span style={{ fontSize: 9, color: '#444', fontFamily: 'Inter, sans-serif', letterSpacing: '0.06em' }}>
+          GEOLOGGIA LTDA. &amp; TECKNOLOGIA
+        </span>
+      </div>
+
       <DestructiveModal 
         isOpen={clearModalOpen}
         title="Limpiar Campaña"
@@ -1170,7 +1190,7 @@ export default function App() {
   useEffect(() => {
     async function loadData() {
       try {
-        const stored = await localforage.getItem('geoinducta_stations')
+        const stored = await localforage.getItem('geosoil_stations')
         if (stored && Array.isArray(stored)) {
           const restored = stored.map(s => ({
             ...s,
@@ -1196,7 +1216,7 @@ export default function App() {
   const saveStations = async (newStationsOrFn) => {
     setStations(prev => {
       const nextStations = typeof newStationsOrFn === 'function' ? newStationsOrFn(prev) : newStationsOrFn
-      localforage.setItem('geoinducta_stations', nextStations).catch(e => console.error('Save error', e))
+      localforage.setItem('geosoil_stations', nextStations).catch(e => console.error('Save error', e))
       return nextStations
     })
   }
@@ -1240,15 +1260,15 @@ export default function App() {
     }
     setIsLoadingDrive(true)
     try {
-      // Listar archivos GeoINducta ZIP en Drive
-      const q = encodeURIComponent("name contains 'GeoINducta' and mimeType='application/zip' and trashed=false")
+      // Listar archivos GeoSoil ZIP en Drive
+      const q = encodeURIComponent("name contains 'GeoSoil' and mimeType='application/zip' and trashed=false")
       const res = await fetch(
         `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime+desc&fields=files(id,name,createdTime,size)&pageSize=20`,
         { headers: { Authorization: `Bearer ${driveToken}` } }
       )
       const data = await res.json()
       if (!data.files || data.files.length === 0) {
-        alert('No se encontraron backups de GeoINducta en tu Drive.\nGuarda primero desde el celular.')
+        alert('No se encontraron backups de GeoSoil en tu Drive.\nGuarda primero desde el celular.')
         setIsLoadingDrive(false)
         return
       }
@@ -1372,7 +1392,7 @@ export default function App() {
           const existingIds = new Set(prev.map(s => s.id))
           const nuevas = incoming.filter(s => !existingIds.has(s.id))
           const merged = [...prev, ...nuevas].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-          localforage.setItem('geoinducta_stations', merged).catch(console.error)
+          localforage.setItem('geosoil_stations', merged).catch(console.error)
           const added = nuevas.length
           const dupes = incoming.length - added
           setTimeout(() => alert(`✅ +${added} estaciones agregadas${dupes ? ` (${dupes} ya existían)` : ''} · Total: ${merged.length}`), 100)
@@ -1396,7 +1416,7 @@ export default function App() {
       clearTimeout(undoTimerRef.current)
       undoTimerRef.current = setTimeout(() => setLastDeleted(null), 6000)
       const next = prev.filter(s => s.id !== id)
-      localforage.setItem('geoinducta_stations', next).catch(console.error)
+      localforage.setItem('geosoil_stations', next).catch(console.error)
       return next
     })
   }, [])
@@ -1406,7 +1426,7 @@ export default function App() {
     clearTimeout(undoTimerRef.current)
     setStations(prev => {
       const next = [...prev, lastDeleted].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-      localforage.setItem('geoinducta_stations', next).catch(console.error)
+      localforage.setItem('geosoil_stations', next).catch(console.error)
       return next
     })
     setLastDeleted(null)
@@ -1444,7 +1464,7 @@ export default function App() {
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
     a.href     = url
-    a.download = `GeoINducta_${new Date().toISOString().slice(0,10)}.csv`
+    a.download = `GeoSoil_${new Date().toISOString().slice(0,10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }, [visibleStations])
@@ -1502,7 +1522,7 @@ export default function App() {
       const fecha   = new Date().toISOString().slice(0, 10)
 
       const blob = await shpwrite.zip(geojson, {
-        folder:      'GeoINducta',
+        folder:      'GeoSoil',
         filename:    `muestras_${fecha}`,
         outputType:  'blob',
         compression: 'DEFLATE',
@@ -1511,7 +1531,7 @@ export default function App() {
       const url = URL.createObjectURL(blob)
       const a   = document.createElement('a')
       a.href    = url
-      a.download = `GeoINducta_SHP_${fecha}.zip`
+      a.download = `GeoSoil_SHP_${fecha}.zip`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -1772,7 +1792,7 @@ export default function App() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `campana_GeoINducta_${new Date().toISOString().slice(0, 10)}.zip`
+      a.download = `campana_GeoSoil_${new Date().toISOString().slice(0, 10)}.zip`
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -1803,12 +1823,12 @@ export default function App() {
     try {
       const blob = await generateZipBlob()
       
-      const boundary = 'geoinducta_boundary_' + Date.now()
+      const boundary = 'geosoil_boundary_' + Date.now()
       const delimiter = "\r\n--" + boundary + "\r\n"
       const close_delim = "\r\n--" + boundary + "--"
 
       const metadata = {
-        name: `GeoINducta_${new Date().toISOString().slice(0, 10)}.zip`,
+        name: `GeoSoil_${new Date().toISOString().slice(0, 10)}.zip`,
         mimeType: 'application/zip'
       }
 
@@ -1872,7 +1892,39 @@ export default function App() {
 
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
 
-  if (!isLoaded) return <div style={{ background: '#0a0a0b', height: '100vh' }}></div>
+  if (!isLoaded) return (
+    <div style={{
+      background: '#0A0A0B', height: '100vh', display: 'flex',
+      flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20,
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <img src="https://www.geologgia.cl/images/Logo_Geo.svg" alt="Geologgia"
+          style={{ height: 52, filter: 'brightness(1.3)', opacity: 0.9 }}
+          onError={e => { e.target.style.display='none' }} />
+        <img src="https://www.tecknologia.cl/logo-tecknologia.png?v=3" alt="Tecknologia"
+          style={{ height: 30, opacity: 0.8 }}
+          onError={e => { e.target.style.display='none' }} />
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 28, fontWeight: 800, color: '#fff', letterSpacing: '0.04em' }}>
+          Geo<span style={{ color: '#D4AF37' }}>S</span>oil
+        </div>
+        <div style={{ fontSize: 12, color: '#555', fontFamily: 'Inter, sans-serif', marginTop: 4 }}>
+          App de Mapeo Geológico de Campo
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+        {[0,1,2].map(i => (
+          <div key={i} style={{
+            width: 6, height: 6, borderRadius: '50%', background: '#D4AF37',
+            animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+            opacity: 0.7,
+          }} />
+        ))}
+      </div>
+      <style>{`@keyframes pulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1)} }`}</style>
+    </div>
+  )
 
   return (
     <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
@@ -1888,8 +1940,14 @@ export default function App() {
             style={{ background: 'none', border: 'none', color: showSidebar ? '#D4AF37' : '#8E8E93', fontSize: 20, cursor: 'pointer' }}>
             ☰
           </button>
-          <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '0.05em', fontFamily: 'Inter, sans-serif' }}>
-            Geo<span style={{ color: '#B91C1C' }}>IN</span>ducta
+          <span style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.04em', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: 7 }}>
+            <img src="https://www.geologgia.cl/images/Logo_Geo.svg" alt="Geologgia"
+              style={{ height: 24, opacity: 0.9, filter: 'brightness(1.3)' }}
+              onError={e => { e.target.style.display='none' }} />
+            Geo<span style={{ color: '#D4AF37' }}>S</span>oil
+            <img src="https://www.tecknologia.cl/logo-tecknologia.png?v=3" alt="Tecknologia"
+              style={{ height: 18, opacity: 0.8 }}
+              onError={e => { e.target.style.display='none' }} />
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2007,7 +2065,7 @@ export default function App() {
           onDeleteCampaign={(name) => {
             setStations(prev => {
               const next = prev.filter(s => (s.campaignSource ?? '__current__') !== name)
-              localforage.setItem('geoinducta_stations', next).catch(console.error)
+              localforage.setItem('geosoil_stations', next).catch(console.error)
               return next
             })
             setHiddenCampaigns(prev => { const n = new Set(prev); n.delete(name); return n })

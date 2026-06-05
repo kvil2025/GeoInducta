@@ -1190,7 +1190,20 @@ export default function App() {
   useEffect(() => {
     async function loadData() {
       try {
-        const stored = await localforage.getItem('geosoil_stations')
+        // ── Intenta cargar desde la clave nueva ────────────────────────────
+        let stored = await localforage.getItem('geosoil_stations')
+
+        // ── MIGRACIÓN: si no hay datos nuevos, busca los datos del nombre anterior ──
+        if (!stored || !Array.isArray(stored) || stored.length === 0) {
+          const legacy = await localforage.getItem('geoinducta_stations')
+          if (legacy && Array.isArray(legacy) && legacy.length > 0) {
+            console.info(`[GeoSoil] Migrando ${legacy.length} estaciones de geoinducta_stations → geosoil_stations`)
+            await localforage.setItem('geosoil_stations', legacy)
+            await localforage.removeItem('geoinducta_stations')
+            stored = legacy
+          }
+        }
+
         if (stored && Array.isArray(stored)) {
           const restored = stored.map(s => ({
             ...s,

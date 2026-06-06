@@ -26,6 +26,10 @@
         {
           "key": "Permissions-Policy",
           "value": "geolocation=(self), microphone=(self), camera=(self)"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://geologgiasoil.vercel.app"
         }
       ]
     }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║         GeoINducta — Procesador Diario de Campaña v1.0              ║
+║         GeoSoil — Procesador Diario de Campaña v1.0                  ║
 ║         Corre en Google Colab (colab.research.google.com)            ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║  FLUJO:                                                              ║
@@ -57,11 +57,11 @@ except ImportError:
 # CELDA 3 — ⚙️ CONFIGURACIÓN  (solo edita esta sección)
 # ═══════════════════════════════════════════════════════════════════════════════
 DRIVE_ROOT    = '/content/drive/MyDrive'           # Raíz de tu Drive
-ZIP_PATTERN   = 'geoinducta'                        # Parte del nombre del ZIP
+ZIP_PATTERN   = 'geosoil'                            # Parte del nombre del ZIP
 FECHA_FILTRO  = str(date.today())                   # 'YYYY-MM-DD' o None = campaña completa
 WHISPER_MODEL = 'base'                              # tiny|base|small|medium|large
 AUDIO_LANG    = 'es'                               # Idioma de los audios
-OUTPUT_DIR    = f'{DRIVE_ROOT}/GeoINducta/Informes' # Carpeta de salida
+OUTPUT_DIR    = f'{DRIVE_ROOT}/GeoSoil/Informes'    # Carpeta de salida
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -79,7 +79,7 @@ def find_latest_zip(root, pattern):
     print(f"📦 ZIP encontrado: {latest.name}  ({latest.stat().st_size // 1024} KB)")
     return str(latest)
 
-EXTRACT_DIR = '/content/geoinducta_data'
+EXTRACT_DIR = '/content/geosoil_data'
 os.makedirs(EXTRACT_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -158,7 +158,7 @@ else:
 # ═══════════════════════════════════════════════════════════════════════════════
 # CELDA 7 — 📍 GEOCODIFICACIÓN INVERSA (Nominatim / OpenStreetMap — GRATIS)
 # ═══════════════════════════════════════════════════════════════════════════════
-geolocator = Nominatim(user_agent="geoinducta-report-v1", timeout=10)
+geolocator = Nominatim(user_agent="geosoil-report-v1", timeout=10)
 
 def reverse_geocode(lat, lng, retries=3):
     for attempt in range(retries):
@@ -392,7 +392,7 @@ REPORT = f"""<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>GeoINducta — Informe {stats['fecha']}</title>
+  <title>GeoSoil — Informe {stats['fecha']}</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *{{box-sizing:border-box;margin:0;padding:0}}
@@ -426,8 +426,8 @@ REPORT = f"""<!DOCTYPE html>
 </head>
 <body>
 <div class="header">
-  <h1>🪨 <span class="geo">Geo</span><span class="in">IN</span>ducta — Informe de Campaña</h1>
-  <div class="meta">Generado automáticamente · {generated_at} · GeoINducta Daily Processor v1.0</div>
+  <h1>🪨 <span class="geo">Geo</span><span class="in">Soil</span> — Informe de Campaña</h1>
+  <div class="meta">Generado automáticamente · {generated_at} · GeoSoil Daily Processor v1.0</div>
 </div>
 
 <div class="container">
@@ -501,7 +501,7 @@ REPORT = f"""<!DOCTYPE html>
 # CELDA 11 — 💾 GUARDAR EN DRIVE
 # ═══════════════════════════════════════════════════════════════════════════════
 fecha_str = (FECHA_FILTRO or 'campaña').replace('-', '')
-report_name = f"Informe_GeoINducta_{fecha_str}.html"
+report_name = f"Informe_GeoSoil_{fecha_str}.html"
 report_path = os.path.join(OUTPUT_DIR, report_name)
 
 with open(report_path, 'w', encoding='utf-8') as f:
@@ -513,7 +513,7 @@ print(f"""
 ║  ✅  INFORME GENERADO CON ÉXITO                            ║
 ╠════════════════════════════════════════════════════════════╣
 ║  📄 Archivo : {report_name:<44} ║
-║  📁 Ruta    : GeoINducta/Informes/                         ║
+║  📁 Ruta    : GeoSoil/Informes/                             ║
 ║  💾 Tamaño  : {str(size_kb) + ' KB':<44} ║
 ╠════════════════════════════════════════════════════════════╣
 ║  Abre el archivo HTML en tu navegador para                 ║

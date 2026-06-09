@@ -1,4 +1,4 @@
-# 📄 GeoINducta — Procesador Diario de Campaña
+# 📄 GeoSoil — Procesador Diario de Campaña
 
 Script Python que corre en **Google Colab** (gratis, sin instalación).
 
@@ -26,7 +26,7 @@ Fotos                                       ↓
 ## Cómo usarlo
 
 ### 1. Exportar desde la app
-En GeoINducta → botón **☁️ Drive** → sincronizar el ZIP
+En GeoSoil → botón **☁️ Drive** → sincronizar el ZIP
 
 ### 2. Abrir en Colab
 1. Ve a [colab.research.google.com](https://colab.research.google.com)
@@ -65,10 +65,10 @@ FECHA_FILTRO = '2026-06-03'   # Fecha del día que quieres procesar
 
 ```
 MyDrive/
-└── GeoINducta/
+└── GeoSoil/
     └── Informes/
-        ├── Informe_GeoINducta_20260602.html
-        ├── Informe_GeoINducta_20260603.html
+        ├── Informe_GeoSoil_20260602.html
+        ├── Informe_GeoSoil_20260603.html
         └── ...
 ```
 

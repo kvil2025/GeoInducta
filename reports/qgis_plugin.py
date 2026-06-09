@@ -1,5 +1,5 @@
 """
-GeoINducta — QGIS Plugin (Carga rápida)
+GeoSoil — QGIS Plugin (Carga rápida)
 ========================================
 Pega este script en la Consola Python de QGIS:
   Complementos → Consola Python → Pegar y ejecutar
@@ -10,7 +10,7 @@ QUÉ HACE:
   - Centra el mapa en los puntos
 
 CÓMO USAR:
-  1. Exporta tu campaña desde GeoINducta (ZIP o solo GeoJSON)
+  1. Exporta tu campaña desde GeoSoil (ZIP o solo GeoJSON)
   2. Abre QGIS y abre la Consola Python (Ctrl+Alt+P)
   3. Cambia GEOJSON_PATH a la ruta de tu archivo
   4. Ejecuta el script
@@ -49,17 +49,17 @@ ROCA_COLORS = {
 DEFAULT_COLOR = '#D4AF37'
 
 
-def load_geoinducta(geojson_path):
+def load_geosoil(geojson_path):
     if not os.path.exists(geojson_path):
         iface.messageBar().pushCritical(
-            "GeoINducta", f"Archivo no encontrado: {geojson_path}"
+            "GeoSoil", f"Archivo no encontrado: {geojson_path}"
         )
         return
 
     # Cargar capa
-    layer = QgsVectorLayer(geojson_path, "GeoINducta Muestras", "ogr")
+    layer = QgsVectorLayer(geojson_path, "GeoSoil Muestras", "ogr")
     if not layer.isValid():
-        iface.messageBar().pushCritical("GeoINducta", "No se pudo cargar el GeoJSON")
+        iface.messageBar().pushCritical("GeoSoil", "No se pudo cargar el GeoJSON")
         return
 
     # Crear categorías por ROCA CAJA
@@ -122,10 +122,10 @@ def load_geoinducta(geojson_path):
     # Mensaje de éxito
     n = layer.featureCount()
     iface.messageBar().pushSuccess(
-        "GeoINducta", f"✅ {n} muestras cargadas con estilo por roca caja"
+        "GeoSoil", f"✅ {n} muestras cargadas con estilo por roca caja"
     )
-    print(f"[GeoINducta] {n} muestras | Colores por ROCA CAJA | Labels: CP")
+    print(f"[GeoSoil] {n} muestras | Colores por ROCA CAJA | Labels: CP")
 
 
 # Ejecutar
-load_geoinducta(GEOJSON_PATH)
+load_geosoil(GEOJSON_PATH)

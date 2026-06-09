@@ -1,8 +1,8 @@
-# SMASH → GeoINducta: Documento de Referencia
+# SMASH → GeoSoil: Documento de Referencia
 
 > Fecha: 2026-05-30  
 > Este documento registra todas las funcionalidades de SMASH (app Flutter original)  
-> y define cómo se implementarán en GeoINducta (app web PWA con stack Google).
+> y define cómo se implementarán en GeoSoil (app web PWA con stack Google).
 
 ---
 
@@ -82,34 +82,31 @@
 
 ---
 
-## GeoINducta — Plan de Implementación Web
+## GeoSoil — Plan de Implementación Web
 
 ### Stack
 ```
 Frontend:  React 18 + Vite (PWA)
 Mapas:     Leaflet.js + OpenStreetMap tiles
-DB cloud:  Firebase Firestore
-DB local:  Dexie.js (IndexedDB) — offline
-Archivos:  Firebase Storage
-Auth:      Firebase Auth (Google Sign-in)
-Hosting:   Firebase Hosting
-IA:        Gemini API (análisis geológico)
-Export:    JSZip + GeoJSON
+DB local:  localforage (IndexedDB) — offline-first
+Archivos:  Google Drive (drive.file scope)
+Auth:      Google OAuth 2.0
+Hosting:   Vercel (geologgiasoil.vercel.app)
+Export:    JSZip + GeoJSON + Shapefile
 PWA:       Workbox Service Worker
 ```
 
 ### Mapeo SMASH → Web
-| SMASH | GeoINducta |
+| SMASH | GeoSoil |
 |---|---|
-| GeoPackage SQLite | Firestore + IndexedDB |
+| GeoPackage SQLite | IndexedDB (localforage) |
 | flutter_map | Leaflet.js |
 | GPS nativo | Browser Geolocation API |
-| record (audio) | MediaRecorder API → Firebase Storage |
-| camera | MediaDevices.getUserMedia → Firebase Storage |
+| record (audio) | MediaRecorder API → IndexedDB |
+| camera | MediaDevices.getUserMedia → IndexedDB |
 | background_locator | Geolocation watchPosition |
 | ZIP export | JSZip |
 | Mapsforge offline | Tile caching via Service Worker |
-| PostGIS | Cloud Run + PostGIS (futuro) |
 
 ### Paleta de Colores
 ```css
@@ -123,19 +120,7 @@ PWA:       Workbox Service Worker
 --color-success:   #22C55E
 ```
 
-### Estructura Firestore
-```
-users/{uid}
-projects/{projectId}
-  name, description, createdBy, createdAt, bounds
-projects/{projectId}/stations/{stationId}
-  lat, lng, litologia, estructura, rumbo, buzamiento
-  notas, audioUrls[], photoUrls[], aiDescription
-projects/{projectId}/tracks/{trackId}
-  coordinates[{lat,lng,timestamp}], startedAt, endedAt
-```
-
 ### Fases
-- **v0.1 MVP**: Mapa + Auth + Proyectos + Formulario geológico + GPS
-- **v0.2 Media**: Audio + Foto + Offline PWA + Export ZIP
-- **v0.3 IA**: Gemini análisis litología + Track GPS + Import GeoJSON/GPX
+- **v0.1 MVP**: Mapa + Auth + Formulario geológico + GPS
+- **v0.2 Media**: Audio + Foto + Offline PWA + Export ZIP/CSV/SHP
+- **v0.3 Freemium**: Sistema de acceso con email gate + dominio inducta.co

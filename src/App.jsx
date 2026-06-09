@@ -1140,11 +1140,11 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
 
 // ─── FREEMIUM CONFIG ─────────────────────────────────────────────────────────
 const FREEMIUM_LIMIT  = 3
-const INDUCTA_DOMAIN  = 'inducta.co'  // dominio con acceso libre automático
+
 const FORMSPREE_URL   = 'https://formspree.io/f/xpwrjkgq'
 
 // ─── UNLOCK MODAL ────────────────────────────────────────────────────────────
-function UnlockModal({ isOpen, onUnlock, onGoogleLogin }) {
+function UnlockModal({ isOpen, onUnlock }) {
   const [name, setName]       = useState('')
   const [email, setEmail]     = useState('')
   const [company, setCompany] = useState('')
@@ -1192,42 +1192,6 @@ function UnlockModal({ isOpen, onUnlock, onGoogleLogin }) {
           <p style={{ color: '#8E8E93', fontSize: 12, fontFamily: 'Inter, sans-serif', margin: 0 }}>
             {FREEMIUM_LIMIT} puntos de prueba usados
           </p>
-        </div>
-
-        {/* ── VIA INDUCTA.CO ── */}
-        <div style={{
-          background: 'rgba(66,133,244,0.08)', border: '1px solid rgba(66,133,244,0.25)',
-          borderRadius: 14, padding: '14px 16px', marginBottom: 16,
-        }}>
-          <p style={{ fontSize: 11, color: '#93C5FD', fontFamily: 'Inter, sans-serif',
-            margin: '0 0 10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            🏢 Equipo {INDUCTA_DOMAIN}
-          </p>
-          <p style={{ fontSize: 12, color: '#aaa', fontFamily: 'Inter, sans-serif', margin: '0 0 12px' }}>
-            Acceso ilimitado instantáneo para cuentas <strong style={{color:'#93C5FD'}}>@{INDUCTA_DOMAIN}</strong>
-          </p>
-          <button onClick={onGoogleLogin} style={{
-            width: '100%', padding: '11px', borderRadius: 10,
-            background: 'rgba(66,133,244,0.15)', border: '1px solid rgba(66,133,244,0.4)',
-            color: '#93C5FD', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', gap: 8,
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Acceder con Google @{INDUCTA_DOMAIN}
-          </button>
-        </div>
-
-        {/* ── DIVIDER ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
-          <span style={{ fontSize: 11, color: '#444', fontFamily: 'Inter, sans-serif' }}>o si eres externo</span>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
         </div>
 
         {/* ── VIA EMAIL ── */}
@@ -1316,45 +1280,13 @@ export default function App() {
       const token = tokenResponse.access_token
       setDriveToken(token)
       setTokenExpiry(Date.now() + (tokenResponse.expires_in ?? 3600) * 1000)
-      // Verificar si el usuario pertenece a inducta.co → acceso libre automático
-      try {
-        const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',
-          { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
-        if (info?.email?.endsWith(`@${INDUCTA_DOMAIN}`) || info?.hd === INDUCTA_DOMAIN) {
-          localStorage.setItem('geosoil_unlocked', 'true')
-          localStorage.setItem('geosoil_user_email', info.email)
-          localStorage.setItem('geosoil_user_type', 'inducta')
-          setIsUnlocked(true)
-          setShowUnlockModal(false)
-        }
-      } catch (_) { /* no bloquear login si falla el check */ }
+
     },
     onError: () => alert('Error al iniciar sesión con Google'),
     scope: 'https://www.googleapis.com/auth/drive.file openid email profile',
   })
 
-  // Login solo para verificar dominio inducta.co (sin Drive)
-  const loginForDomainCheck = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',
-          { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } }).then(r => r.json())
-        if (info?.email?.endsWith(`@${INDUCTA_DOMAIN}`) || info?.hd === INDUCTA_DOMAIN) {
-          localStorage.setItem('geosoil_unlocked', 'true')
-          localStorage.setItem('geosoil_user_email', info.email)
-          localStorage.setItem('geosoil_user_type', 'inducta')
-          setIsUnlocked(true)
-          setShowUnlockModal(false)
-        } else {
-          alert(`Solo cuentas @${INDUCTA_DOMAIN} tienen acceso libre.\nUsa el formulario de email para desbloquear.`)
-        }
-      } catch (_) {
-        alert('No se pudo verificar el dominio. Intenta de nuevo.')
-      }
-    },
-    onError: () => alert('Error al verificar con Google'),
-    scope: 'openid email profile',
-  })
+
 
   useEffect(() => {
     async function loadData() {
@@ -2501,7 +2433,7 @@ export default function App() {
       <UnlockModal
         isOpen={showUnlockModal}
         onUnlock={() => { setIsUnlocked(true); setShowUnlockModal(false) }}
-        onGoogleLogin={loginForDomainCheck}
+
       />
     </div>
   )

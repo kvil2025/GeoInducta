@@ -1821,13 +1821,14 @@ export default function App() {
           const zipCheck = await JSZip.loadAsync(arrayBuffer.slice(0))
           const hasShp = Object.keys(zipCheck.files).some(f => f.toLowerCase().endsWith('.shp'))
           if (!hasShp) {
-            alert('El ZIP no contiene archivos .shp\\nPara cargar Shapefiles, el ZIP debe incluir al menos un .shp + .dbf + .prj')
+            alert('El ZIP no contiene archivos .shp\nEl ZIP debe incluir al menos .shp + .dbf + .prj')
             e.target.value = ''
             return
           }
         }
-        const { default: shp } = await import('shpjs')
-        const geojson = sanitizeGeoJSON(await shp(arrayBuffer))
+        const shpModule = await import('shpjs')
+        const shpParse = shpModule.default || shpModule
+        const geojson = sanitizeGeoJSON(await shpParse(arrayBuffer))
         // shpjs puede devolver un array de FeatureCollections si hay múltiples capas
         if (Array.isArray(geojson)) {
           geojson.forEach((layer, i) => {
@@ -1846,7 +1847,7 @@ export default function App() {
       }
     } catch (err) {
       console.error(err)
-      alert('Error procesando el archivo.')
+      alert('Error procesando archivo: ' + (err.message || err))
     }
     e.target.value = ''
   }

@@ -10,6 +10,9 @@ export default defineConfig({
       includeAssets: ['favicon.ico', 'icons/*.png'],
       workbox: {
         maximumFileSizeToCacheInBytes: 10000000, // 10MB limit for parsing libraries
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
       },
       manifest: {
         name: 'GeoSoil',

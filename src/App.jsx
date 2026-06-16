@@ -1826,16 +1826,15 @@ export default function App() {
             return
           }
         }
-        const shpModule = await import('shpjs')
-        const shpParse = shpModule.default || shpModule
-        const geojson = sanitizeGeoJSON(await shpParse(arrayBuffer))
+        const { parseZip } = await import('shpjs')
+        const geojson = await parseZip(arrayBuffer)
         // shpjs puede devolver un array de FeatureCollections si hay múltiples capas
         if (Array.isArray(geojson)) {
           geojson.forEach((layer, i) => {
-            setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: layer, name: `${name} (${i + 1})` }])
+            setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: sanitizeGeoJSON(layer), name: `${name} (${i + 1})` }])
           })
         } else {
-          setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
+          setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: sanitizeGeoJSON(geojson), name }])
         }
       } else if (ext === 'tif' || ext === 'tiff') {
         const { default: parseGeoraster } = await import('georaster')

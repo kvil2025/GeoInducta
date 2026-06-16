@@ -9,10 +9,23 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       workbox: {
-        maximumFileSizeToCacheInBytes: 10000000, // 10MB limit for parsing libraries
+        maximumFileSizeToCacheInBytes: 10000000,
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        // Only precache the main entry files, not dynamically-imported chunks
+        globPatterns: ['**/*.{html,css,ico,png,svg,webmanifest}'],
+        // JS chunks use NetworkFirst so new deploys always get fresh files
+        runtimeCaching: [
+          {
+            urlPattern: /\.js$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'js-cache',
+              expiration: { maxEntries: 50, maxAgeSeconds: 7 * 24 * 60 * 60 },
+            },
+          },
+        ],
       },
       manifest: {
         name: 'GeoSoil',

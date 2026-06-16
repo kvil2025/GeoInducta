@@ -828,7 +828,7 @@ function PuntoForm({ position, onSave, onClose, initialData, nextCorrelativos })
   )
 }
 
-function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, onLoadFromDrive, isLoadingDrive, externalLayers, onRemoveLayer, onLayerOpacity, hiddenCampaigns, onToggleCampaign, onDeleteCampaign, isUnlocked, onRequestUnlock }) {
+function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync, isSyncing, onClearAll, driveToken, loginToDrive, onEditStation, onDeleteStation, onExportCSV, onExportSHP, onLoadFromDrive, isLoadingDrive, externalLayers, onRemoveLayer, onLayerOpacity, onLayerColor, hiddenCampaigns, onToggleCampaign, onDeleteCampaign, isUnlocked, onRequestUnlock }) {
   const [clearModalOpen, setClearModalOpen] = useState(false)
   const totalMuestras = stations.reduce((a, s) => a + s.muestras.length, 0)
   const totalFotos    = stations.reduce((a, s) => a + s.muestras.reduce((b, m) => b + (m.fotos?.length || 0), 0), 0)
@@ -1084,6 +1084,16 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12,
                       color: '#555', padding: '0 2px' }}>×</button>
                 </div>
+                {l.type === 'geojson' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <span style={{ fontSize: 9, color: '#555', flexShrink: 0 }}>Color</span>
+                    <input type="color" value={l.color || '#3B82F6'}
+                      onChange={e => onLayerColor(l.id, e.target.value)}
+                      style={{ width: 28, height: 18, border: 'none', cursor: 'pointer', background: 'none', padding: 0 }}
+                    />
+                    <span style={{ fontSize: 9, color: '#666' }}>Click en mapa para ver atributos</span>
+                  </div>
+                )}
                 {l.type === 'pdf-overlay' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 9, color: '#555', flexShrink: 0 }}>Opacidad</span>
@@ -2149,7 +2159,27 @@ export default function App() {
 
         {externalLayers.map(layer => {
           if (layer.type === 'geojson') {
-            return <GeoJSON key={layer.id} data={layer.data} style={{ color: '#3B82F6', weight: 2, opacity: 0.8 }} />
+            const layerColor = layer.color || '#3B82F6'
+            return <GeoJSON key={layer.id + layerColor} data={layer.data}
+              style={() => ({
+                color: layerColor, weight: 2, opacity: 0.85,
+                fillColor: layerColor, fillOpacity: 0.25,
+              })}
+              onEachFeature={(feature, leafletLayer) => {
+                if (feature.properties && Object.keys(feature.properties).length > 0) {
+                  const rows = Object.entries(feature.properties)
+                    .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                    .map(([k, v]) => `<tr><td style="padding:3px 8px;font-weight:600;color:#D4AF37;white-space:nowrap">${k}</td><td style="padding:3px 8px;color:#ccc">${v}</td></tr>`)
+                    .join('')
+                  leafletLayer.bindPopup(
+                    `<div style="font-family:Inter,sans-serif;font-size:12px;max-height:250px;overflow-y:auto;background:#1a1a1b;color:#ccc;border-radius:8px;padding:6px 2px">
+                      <table style="border-collapse:collapse;width:100%">${rows}</table>
+                    </div>`,
+                    { maxWidth: 320, className: 'dark-popup' }
+                  )
+                }
+              }}
+            />
           } else if (layer.type === 'geotiff') {
             return <GeoTiffLayer key={layer.id} georaster={layer.georaster} />
           } else if (layer.type === 'pdf-overlay') {
@@ -2211,6 +2241,7 @@ export default function App() {
           externalLayers={externalLayers}
           onRemoveLayer={(id) => setExternalLayers(prev => prev.filter(l => l.id !== id))}
           onLayerOpacity={handleLayerOpacity}
+          onLayerColor={(id, color) => setExternalLayers(prev => prev.map(l => l.id === id ? { ...l, color } : l))}
           hiddenCampaigns={hiddenCampaigns}
           onToggleCampaign={(name) => setHiddenCampaigns(prev => {
             const next = new Set(prev)

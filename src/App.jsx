@@ -1802,17 +1802,47 @@ export default function App() {
         const dom = new DOMParser().parseFromString(text, 'text/xml')
         const geojson = sanitizeGeoJSON(kml(dom)) // SECURITY: sanitizar
         setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
+      } else if (ext === 'gpx') {
+        const { gpx } = await import('@tmcw/togeojson')
+        const text = await file.text()
+        const dom = new DOMParser().parseFromString(text, 'text/xml')
+        const geojson = sanitizeGeoJSON(gpx(dom))
+        setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
       } else if (ext === 'geojson' || ext === 'json') {
         const text = await file.text()
         const geojson = sanitizeGeoJSON(JSON.parse(text)) // SECURITY: sanitizar
         setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
+      } else if (ext === 'zip' || ext === 'shp') {
+        // Shapefile import (.zip con .shp/.dbf/.prj dentro, o .shp directo)
+        const arrayBuffer = await file.arrayBuffer()
+        if (ext === 'zip') {
+          // Verificar que el ZIP contenga un .shp (para no confundir con otros ZIPs)
+          const { default: JSZip } = await import('jszip')
+          const zipCheck = await JSZip.loadAsync(arrayBuffer.slice(0))
+          const hasShp = Object.keys(zipCheck.files).some(f => f.toLowerCase().endsWith('.shp'))
+          if (!hasShp) {
+            alert('El ZIP no contiene archivos .shp\\nPara cargar Shapefiles, el ZIP debe incluir al menos un .shp + .dbf + .prj')
+            e.target.value = ''
+            return
+          }
+        }
+        const { default: shp } = await import('shpjs')
+        const geojson = sanitizeGeoJSON(await shp(arrayBuffer))
+        // shpjs puede devolver un array de FeatureCollections si hay múltiples capas
+        if (Array.isArray(geojson)) {
+          geojson.forEach((layer, i) => {
+            setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: layer, name: `${name} (${i + 1})` }])
+          })
+        } else {
+          setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name }])
+        }
       } else if (ext === 'tif' || ext === 'tiff') {
         const { default: parseGeoraster } = await import('georaster')
         const arrayBuffer = await file.arrayBuffer()
         const raster = await parseGeoraster(arrayBuffer)
         setExternalLayers(prev => [...prev, { id: generateId(), type: 'geotiff', georaster: raster, name }])
       } else {
-        alert('Formato no soportado. Usa KML, KMZ, GeoJSON o TIF.')
+        alert('Formato no soportado. Usa SHP (ZIP), GPX, KML, KMZ, GeoJSON o TIF.')
       }
     } catch (err) {
       console.error(err)
@@ -2069,7 +2099,7 @@ export default function App() {
             color: '#60A5FA', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
             fontFamily: 'Inter, sans-serif'
           }}>+ 🗺️ Capa</button>
-          <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff" style={{ display: 'none' }} />
+          <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff,.gpx,.shp,.zip" style={{ display: 'none' }} />
           <button onClick={() => pdfInputRef.current?.click()} style={{
             background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
             color: '#F87171', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',

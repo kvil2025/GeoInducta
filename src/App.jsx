@@ -900,7 +900,12 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
                       background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.3)',
                       color: '#D4AF37', borderRadius: 6, padding: '3px 8px', fontSize: 11,
                       cursor: 'pointer', fontFamily: 'Inter, sans-serif'
-                    }}>✏️ Editar</button>
+                    }}>✏️</button>
+                    <button onClick={() => { if (confirm(`¿Eliminar estación ${s.muestras[0]?.cp || ''}?`)) onDeleteStation(s.id) }} disabled={isBusy} style={{
+                      background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                      color: '#F87171', borderRadius: 6, padding: '3px 8px', fontSize: 11,
+                      cursor: 'pointer', fontFamily: 'Inter, sans-serif'
+                    }}>🗑️</button>
                   </div>
                 </div>
                 {s.muestras[0]?.horizonte && (
@@ -1278,6 +1283,7 @@ export default function App() {
   const [externalLayers, setExternalLayers] = useState([])
   const fileInputRef = useRef(null)
   const pdfInputRef  = useRef(null)
+  const mapRef       = useRef(null)
   const [pdfPending, setPdfPending] = useState(null) // { name, imageUrl } esperando coords
 
   // SECURITY: Verifica si el token de Drive sigue vigente (con 60s de margen)
@@ -2142,7 +2148,7 @@ export default function App() {
         </div>
       </div>
 
-      <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+      <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false} ref={mapRef}>
         <TileLayer
           key={activeLayer}
           url={TILE_LAYERS[activeLayer].url}
@@ -2429,7 +2435,11 @@ export default function App() {
       <button onClick={() => {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
-            pos => setGpsPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            pos => {
+              const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+              setGpsPosition(latlng)
+              if (mapRef.current) mapRef.current.flyTo(latlng, 16)
+            },
             () => alert('GPS no disponible')
           )
         }
@@ -2469,6 +2479,7 @@ export default function App() {
           pos => {
             const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude }
             setGpsPosition(latlng)
+            if (mapRef.current) mapRef.current.flyTo(latlng, 16)
             setClickPosition(latlng)
             setEditingStation(null)
             setShowForm(true)

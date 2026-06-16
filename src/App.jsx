@@ -2099,7 +2099,7 @@ export default function App() {
             color: '#60A5FA', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
             fontFamily: 'Inter, sans-serif'
           }}>+ 🗺️ Capa</button>
-          <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff,.gpx,.shp,.zip" style={{ display: 'none' }} />
+          <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff,.gpx,.shp,.zip,.dbf,.prj,application/zip,application/x-zip-compressed,application/octet-stream,application/gpx+xml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" style={{ display: 'none' }} />
           <button onClick={() => pdfInputRef.current?.click()} style={{
             background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
             color: '#F87171', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',

@@ -1901,7 +1901,7 @@ export default function App() {
       'TAKEN BY', 'SEMANA', 'UTM_ZONA', 'UTM_ESTE', 'UTM_NORTE', 'Lat_DD', 'Lng_DD', 'Fecha',
     ]
     const rows = [COLS.join('\t')]
-    stations.forEach(s => {
+    exportList.forEach(s => {
       const utm = latLngToUTM(s.position.lat, s.position.lng)
       s.muestras.forEach(m => {
         const altStr = Object.entries(m.alteracion)
@@ -1919,7 +1919,7 @@ export default function App() {
     })
     zip.file('muestras.tsv', rows.join('\n'))
 
-    for (const s of stations) {
+    for (const s of exportList) {
       for (const m of s.muestras) {
         const prefix = `${m.cp || 'CP'}_${m.idSample || 'S'}`
         if (m.fotos?.length) {
@@ -1934,7 +1934,7 @@ export default function App() {
     }
 
     // stations.json — backup completo para restaurar en cualquier navegador
-    const stationsForExport = stations.map(s => ({
+    const stationsForExport = exportList.map(s => ({
       ...s,
       muestras: s.muestras.map(m => ({ ...m, audioBlob: undefined, fotos: (m.fotos||[]).map(f => ({ ...f, file: undefined, url: undefined })) }))
     }))

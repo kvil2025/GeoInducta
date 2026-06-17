@@ -169,6 +169,34 @@ const latLngToUTM = (lat, lng) => {
   return { zone: `${zone}${band}`, zoneNum: zone, easting, northing }
 }
 
+// Inverse: UTM → LatLng (WGS84)
+const utmToLatLng = (easting, northing, zoneNum, southern = true) => {
+  const a = 6378137.0, f = 1 / 298.257223563
+  const e2 = 2 * f - f * f, ep2 = e2 / (1 - e2), k0 = 0.9996
+  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2))
+  const x = easting - 500000
+  const y = southern ? northing - 10000000 : northing
+  const M = y / k0
+  const mu = M / (a * (1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256))
+  const phi1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu)
+    + (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
+    + (151 * e1 ** 3 / 96) * Math.sin(6 * mu)
+    + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu)
+  const N1 = a / Math.sqrt(1 - e2 * Math.sin(phi1) ** 2)
+  const T1 = Math.tan(phi1) ** 2
+  const C1 = ep2 * Math.cos(phi1) ** 2
+  const R1 = a * (1 - e2) / (1 - e2 * Math.sin(phi1) ** 2) ** 1.5
+  const D = x / (N1 * k0)
+  const lat = phi1 - (N1 * Math.tan(phi1) / R1) * (
+    D ** 2 / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 ** 2 - 9 * ep2) * D ** 4 / 24
+    + (61 + 90 * T1 + 298 * C1 + 45 * T1 ** 2 - 252 * ep2 - 3 * C1 ** 2) * D ** 6 / 720
+  )
+  const lng0 = ((zoneNum - 1) * 6 - 180 + 3) * Math.PI / 180
+  const lng = lng0 + (D - (1 + 2 * T1 + C1) * D ** 3 / 6
+    + (5 - 2 * C1 + 28 * T1 - 3 * C1 ** 2 + 8 * ep2 + 24 * T1 ** 2) * D ** 5 / 120) / Math.cos(phi1)
+  return { lat: lat * 180 / Math.PI, lng: lng * 180 / Math.PI }
+}
+
 const newMuestra = () => ({
   _id: generateId(),
   cp: '', idSample: '', elevation: '', xm: '', ym: '', from: '', to: '',
@@ -1861,6 +1889,9 @@ export default function App() {
         const arrayBuffer = await file.arrayBuffer()
         const raster = await parseGeoraster(arrayBuffer)
         setExternalLayers(prev => [...prev, { id: generateId(), type: 'geotiff', georaster: raster, name }])
+      } else if (ext === 'xls' || ext === 'xlsx') {
+        const arrayBuffer = await file.arrayBuffer()
+        await handleBDImport(arrayBuffer, name)
       } else {
         alert('Formato no soportado. Usa SHP (ZIP), GPX, KML, KMZ, GeoJSON o TIF.')
       }
@@ -1872,7 +1903,7 @@ export default function App() {
   }
 
   // ─── DRIVE BROWSER: navegar carpetas y cargar archivos ─────────────────────
-  const GEO_EXTENSIONS = ['kml','kmz','geojson','json','gpx','zip','shp','tif','tiff']
+  const GEO_EXTENSIONS = ['kml','kmz','geojson','json','gpx','zip','shp','tif','tiff','xls','xlsx']
 
   const browseDriveFolder = useCallback(async (folderId = 'root', folderName = 'Mi Drive') => {
     if (!isDriveTokenValid()) { alert('Reconecta Google Drive primero.'); return }
@@ -1953,6 +1984,8 @@ export default function App() {
         const { default: parseGeoraster } = await import('georaster')
         const raster = await parseGeoraster(arrayBuffer)
         setExternalLayers(prev => [...prev, { id: generateId(), type: 'geotiff', georaster: raster, name: fileName }])
+      } else if (ext === 'xls' || ext === 'xlsx') {
+        await handleBDImport(arrayBuffer, fileName)
       }
       setShowDriveBrowser(false)
       alert(`\u2705 Capa "${fileName}" cargada desde Drive`)
@@ -1963,6 +1996,103 @@ export default function App() {
       setIsDriveBrowsing(false)
     }
   }, [driveToken, tokenExpiry])
+
+  // ─── BD_GEOL IMPORT: Importar planilla geológica como campaña ──────────────
+  const handleBDImport = useCallback(async (arrayBuffer, fileName) => {
+    try {
+      const XLSX = (await import('xlsx')).default || await import('xlsx')
+      const wb = XLSX.read(arrayBuffer, { type: 'array' })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' })
+
+      if (rows.length === 0) { alert('El archivo está vacío.'); return }
+
+      // Detect UTM zone from first row's Xm/Ym
+      const firstX = parseFloat(rows[0]['Xm'] || rows[0]['xm'] || 0)
+      const firstY = parseFloat(rows[0]['Ym'] || rows[0]['ym'] || 0)
+      if (!firstX || !firstY) { alert('No se encontraron columnas Xm/Ym en el archivo.'); return }
+
+      // Detect UTM zone: Chile typically zone 18S or 19S
+      const utmZone = firstX > 500000 ? 19 : 18 // rough heuristic for Chile
+
+      // Geochemistry column names (everything after TAKEN BY)
+      const geoChemCols = Object.keys(rows[0]).filter(k => {
+        const skip = ['CP','SEMANA','IDSAMPLE','Elevation','Xm','Ym','From (m)','To (m)',
+          'HORIZONTE','ROCA CAJA','ESTRUCTURA','RUMBO','MANTEO','MINERALES',
+          'CAOLINIZACION','OXIDACION FeO','COMENTARIO','TAKEN BY']
+        return !skip.includes(k)
+      })
+
+      // Group rows by CP
+      const byCP = {}
+      rows.forEach(r => {
+        const cp = String(r['CP'] || '').trim()
+        if (!cp) return
+        if (!byCP[cp]) byCP[cp] = []
+        byCP[cp].push(r)
+      })
+
+      const newStations = Object.entries(byCP).map(([cp, samples]) => {
+        const first = samples[0]
+        const easting = parseFloat(first['Xm'] || 0)
+        const northing = parseFloat(first['Ym'] || 0)
+        const { lat, lng } = utmToLatLng(easting, northing, utmZone, true)
+
+        const muestras = samples.map(r => {
+          // Build geoquimica object (skip -999 = below detection)
+          const geoquimica = {}
+          geoChemCols.forEach(col => {
+            const val = parseFloat(r[col])
+            if (!isNaN(val) && val !== -999) geoquimica[col] = val
+          })
+
+          return {
+            _id: generateId(),
+            cp: String(r['CP'] || ''),
+            idSample: String(r['IDSAMPLE'] || ''),
+            elevation: String(r['Elevation'] || ''),
+            xm: String(easting),
+            ym: String(northing),
+            from: String(r['From (m)'] ?? ''),
+            to: String(r['To (m)'] ?? ''),
+            horizonte: String(r['HORIZONTE'] || ''),
+            rocaCaja: String(r['ROCA CAJA'] || ''),
+            rocaCajaCustom: '',
+            estructura: String(r['ESTRUCTURA'] || ''),
+            rumbo: String(r['RUMBO'] || ''),
+            manteo: String(r['MANTEO'] || ''),
+            mineralogia: String(r['MINERALES'] || '').split(/[,;]\s*/).filter(Boolean),
+            alteracion: {
+              'Kaolín': r['CAOLINIZACION'] || null,
+              'FeOx': r['OXIDACION FeO'] || null,
+              Qz: null, Biotita: null, Muscovita: null,
+            },
+            mineralizacion: '',
+            comentario: String(r['COMENTARIO'] || ''),
+            takenBy: String(r['TAKEN BY'] || ''),
+            semana: String(r['SEMANA'] || ''),
+            fotos: [],
+            audioBlob: null,
+            geoquimica, // 39 campos pXRF
+          }
+        })
+
+        return {
+          id: generateId(),
+          position: { lat, lng },
+          createdAt: new Date().toISOString(),
+          campaignSource: fileName,
+          muestras,
+        }
+      })
+
+      saveStations(prev => [...prev, ...newStations])
+      alert(`✅ BD importada: ${newStations.length} estaciones, ${rows.length} muestras desde "${fileName}"`)
+    } catch (err) {
+      console.error('BD import error', err)
+      alert('Error al importar BD: ' + err.message)
+    }
+  }, [])
 
   // ─── CORE ZIP GENERATOR ───
   const generateZipBlob = async () => {
@@ -2212,7 +2342,7 @@ export default function App() {
             color: '#60A5FA', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
             fontFamily: 'Inter, sans-serif'
           }}>+ 🗺️ Capa</button>
-          <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff,.gpx,.shp,.zip,.dbf,.prj,application/zip,application/x-zip-compressed,application/octet-stream,application/gpx+xml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" style={{ display: 'none' }} />
+          <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff,.gpx,.shp,.zip,.dbf,.prj,.xls,.xlsx,application/zip,application/x-zip-compressed,application/octet-stream,application/gpx+xml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style={{ display: 'none' }} />
           <button onClick={() => {
             if (!isDriveTokenValid()) { loginToDrive(); return }
             browseDriveFolder('root', 'Mi Drive')

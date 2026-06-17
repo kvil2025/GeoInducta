@@ -1,0 +1,11 @@
+Par,N,Pearson_r,Pearson_p,Spearman_rs,Interpretacion
+Y_ppm vs Ce_ppm,3091,0.421,2.59e-133,0.137,Moderada
+Y_ppm vs La_ppm,3074,0.336,3.92e-82,0.151,Débil
+Y_ppm vs Th_ppm,3089,0.488,1.92e-184,0.34,Moderada
+Y_ppm vs Nd_ppm,3030,0.157,2.88e-18,0.126,Débil
+Y_ppm vs Fe__,3152,0.053,2.89e-03,0.402,Débil
+Y_ppm vs Ti__,3152,0.055,2.15e-03,0.372,Débil
+Y_ppm vs Y_pond,2991,0.997,0.00e+00,0.997,Fuerte
+Ce_ppm vs La_ppm,3074,0.848,0.00e+00,0.843,Fuerte
+Ce_ppm vs Th_ppm,3087,0.672,0.00e+00,0.193,Moderada
+La_ppm vs Nd_ppm,3025,0.734,0.00e+00,0.661,Fuerte

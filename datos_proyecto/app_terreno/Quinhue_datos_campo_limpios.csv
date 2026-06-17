@@ -1,0 +1,39 @@
+Estacion,Intervalo,Muestra_ID,Litologia,Horizonte,Alteracion,Observaciones,Sector
+Qui-CA-107,(0 - 1) m,1140115,Granito + Qz ± bt,LP-US,+Caol / -OxFe,"Sup (0-1): LP-US, +Caol / -OxFe. (Gro)",Este
+Qui-CA-107,(1 - 2) m,1140116,Granito + Qz ± bt,UP,-Caol = OxFe,"Inf (1-2): UP, -Caol = OxFe. (Gro)",Este
+Qui-CA-108,(0 - 1) m,1140117,Granito + Qz ± bt,UP/LP,+Caol + OxFe,"Muestra 117: UP/LP, +Caol + OxFe. (Gro)",Este
+Qui-CA-108,(0 - 1) m,1140118,Granito + Qz ± bt,LP,± Caol + OxFe,"Muestra 118: LP, ± Caol + OxFe. (Gro)",Este
+Qui-CA-109,(0 - 1) m,1140119,Granito + Qz ± bt,LP/US,± Caol + OxFe,"Muestra LP/US, ± Caol + OxFe. (Gro)",Este
+Qui-CA-110,(0 - 1) m,1140120,Granito + Qz + bt,LP/US,+Caol ± OxFe,"Nivel (0-1): LP/US, +Caol ± OxFe. (Gro)",Este
+Qui-CA-110,(1 - 2) m,1140121,Granito + Qz + bt,US/LP,+Caol ± OxFe,"Nivel (1-2): US/LP, +Caol ± OxFe. (Gro)",Este
+Zona Muestreo 1,-,GPS,Control de inicio de zona,-,-,Punto de referencia georreferenciado en Qui-CA.,Este
+Qui-CA-111,(0 - 1) Norte,1140122,Granito + Qz - bt,LP,+Caol - OxFe,"Norte: LP, +Caol - OxFe. (Gro)",Este
+Qui-CA-111,(0 - 1) Sur,1140123,Granito + Qz - bt,LP,± Caol - OxFe,"Sur: LP, ± Caol - OxFe. (Gro)",Este
+Zona Muestreo 2,Punto 372,GPS,Pegmatita (Qz + Msc),-,-,Control estructural y mineralógico singular del sector.,Este
+Qui-CA-112,Pared Este (0-1),1140124,Granito con stockwork de Qz + Msc. ± bt en granito,LP,± Caol ± OxFe,Pared Este: LP con ± Caol ± OxFe.,Este
+Qui-CA-112,Pared Este (0-2),1140125,Granito con stockwork de Qz + Msc. ± bt en granito,LP,± Caol ± OxFe,Pared Este: LP con ± Caol ± OxFe.,Este
+Qui-CA-112,Pared Oeste (0-1),1140126,Pegmatitas (Qz + Msc) (LP),LP,± Caol ± OxFe,"Pared Oeste: Cambia lateralmente a Pegmatitas (Qz + Msc) (LP), ± Caol ± OxFe.",Oeste
+Qui-CA-113,(0 - 1) m,1140127,Granito + Qz + bt + Msc,LP,-Caol ± OxFe,"Muestra 127: LP, -Caol ± OxFe. (Gro)",Este
+Qui-CA-113,(1 - 2) m,1140128,Granito + Qz + bt + Msc,UP,-Caol ± OxFe,"Muestra 128: UP, -Caol ± OxFe. (Gro)",Este
+Qui-CA-114,(0 - 1) Norte,1140129,Granito (Qz + bt),UP,± Caol ± OxFe,"Norte: UP, ± Caol ± OxFe. (Gro)",Este
+Qui-CA-114,(0 - 0.3) Sur,1140130,Granito (Qz + bt),UP,-Caol ± OxFe,"Sur: UP, -Caol ± OxFe. (Gro)",Este
+Qui-CA-115,(0 - 1) m,1140131,Granito + Qz + bt + Msc,UP/LP,-Caol ± OxFe,"Muestra UP/LP, presenta -Caol ± OxFe. (Gro)",Este
+Qui-CA-116,(0 - 1) m,1140132,Granito + Qz + bt + Msc,US / (LS?),+Caol - OxFe,"Muestra US / (LS?), presenta +Caol - OxFe. (Gro)",Este
+Qui-CA-117,(0 - 1) m,1140133,Granito + Qz + bt + Msc,LP,± Caol ± OxFe,"Muestra LP, ± Caol ± OxFe. Zona Superior intruida por pegmatita de Qz + Msc. (Gro)",Este
+Qui-CA-118,(0 - 1) m,1140134,Granito + Qz + bt,LP/US,+Caol - OxFe,"Nivel (0-1): LP/US, +Caol - OxFe. (Gro)",Este
+Qui-CA-118,(1 - 2) m,1140135,Granito + Qz + bt,LP,+Caol - OxFe,"Nivel (1-2): LP, +Caol - OxFe. (Gro)",Este
+Qui-CA-119,(0 - 1) m,1140136,Granito + Qz + bt ± Msc,LP/US,+Caol ± OxFe,"Nivel (0-1): LP/US, +Caol ± OxFe. (Gro)",Este
+Qui-CA-119,(1 - 2) m,1140137,Granito + Qz + bt ± Msc,LP,+Caol ± OxFe,"Nivel (1-2): LP, +Caol ± OxFe. (Gro)",Este
+Qui-CA-120,(0 - 1) m,1140138,Granito + Qz - bt,LP,-Caol ± OxFe,"Muestra LP, manifiesta -Caol ± OxFe. (Gro)",Este
+Qui-CA-121,(0 - 1) m,1140139,Granito (Qz + bt),LP,+Caol - OxFe,"Nivel (0-1): LP, +Caol - OxFe. (Gro)",Este
+Qui-CA-121,(1 - 2) m,1140140,Granito (Qz + bt),LP,+Caol ± OxFe,"Nivel (1-2): LP, +Caol ± OxFe. (Gro)",Este
+Qui-CA-121,(2 - 3) m,1140141,Granito (Qz + bt),LP,± Caol + OxFe,"Nivel (2-3): LP, ± Caol + OxFe. (Gro)",Este
+Qui-CA-122,(0 - 1) m,1140142,Granito (Qz + bt),UP/LP,+Caol ± OxFe,"Muestra UP/LP, marcada con +Caol ± OxFe.",Oeste
+Qui-CA-123,(0 - 1) m,1140143,Granito (Qz + bt),UP/LP,± Caol + OxFe,"Muestra UP/LP, marcada con ± Caol + OxFe. (Gro)",Oeste
+Qui-CA-124,(0 - 1) m,1140144,Granito (Qz - bt),UP/LP,± OxFe - Caol,"Muestra UP/LP, ± OxFe - Caol. (Gro)",Oeste
+Qui-CA-125,(0 - 1) m,1140145,Granito + Qz + bt - Msc,LP/US,+OxFe - Caol,"Muestra LP/US, +OxFe - Caol. (Gro)",Oeste
+Qui-CA-126,(0 - 1) m,1140146 (Duplicado),Granito + Qz - bt,UP/LP,+Caol ± OxFe,"Sub-muestra 1: UP/LP, +Caol ± OxFe. Duplicado.",Oeste
+Qui-CA-126,(0 - 1) m,1140147 (Alt),Granito + Qz - bt,UP,++OxFe - Caol,"Sub-muestra 2: UP, ++OxFe - Caol. Ver nota estructural.",Oeste
+Qui-CA-127,(0 - 1) m,1140148,Granito + Qz - bt,UP,++OxFe - Caol,"Muestra UP, ++OxFe - Caol. (Gro)",Oeste
+Qui-CA-128,(0 - 0.5) m,1140149,Granito + Qz - bt,LP,± Caol + OxFe,"Muestra LP, ± Caol + OxFe. (Gro)",Oeste
+Qui-CA-129,(0 - 0.5) m,1140150,Granito + Qz - bt,UP,-Caol = OxFe,"Muestra UP, -Caol = OxFe. (Gro)",Oeste

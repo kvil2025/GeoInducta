@@ -1,0 +1,172 @@
+=== CARGA ===
+Filas: 2907  |  Columnas: 90
+
+--- PASO 1: Eliminar columnas vacías ---
+  Eliminadas: 60 columnas
+  Columnas restantes: 30
+
+--- PASO 2: Marcar outliers extremos ---
+  Registros con outliers: 67
+    -> CLBS-10: Fe_ALTO(16.0063%)
+    -> MADBS-103A: Fe_ALTO(49.064%)
+    -> MADBS-103B: Fe_ALTO(25.425%); K_ALTO(10.623%)
+    -> MADBS-104: K_ALTO(16.557%)
+    -> MADBS-61C: Mn_ALTO(1.7147%)
+    -> MADBS-83: Fe_ALTO(15.3786%)
+    -> PIMBS-39B: Mn_ALTO(1.7339%)
+    -> riae-04b: Mn_ALTO(1.5803%)
+    -> riae-06c: Mn_ALTO(1.3638%)
+    -> curm-03: Mn_ALTO(571.0%)
+    -> curm-04: Mn_ALTO(536.0%)
+    -> rlrm-43: Y_ALTO(468.0ppm)
+    -> TOGG-51b: Mn_ALTO(1.678722%)
+    -> TOGG-53: Mn_ALTO(2.678722%)
+    -> TOGG-55: Mn_ALTO(3.678722%)
+    -> TOGG-57: Mn_ALTO(4.678722%)
+    -> TOGG-59: Mn_ALTO(5.678722%)
+    -> TOGG-61: Mn_ALTO(6.678722%)
+    -> TOGG-63: Mn_ALTO(7.678722%)
+    -> TOGG-65: Mn_ALTO(8.678722%)
+    -> TOGG-67: Mn_ALTO(9.678722%)
+    -> TOGG-69: Mn_ALTO(10.678722%)
+    -> TOGG-71: Mn_ALTO(11.678722%)
+    -> TOGG-73: Mn_ALTO(12.678722%)
+    -> TOGG-75: Mn_ALTO(13.678722%)
+    -> TOGG-77: Mn_ALTO(14.678722%)
+    -> TOGG-79: Mn_ALTO(15.678722%)
+    -> TOGG-81: Mn_ALTO(16.678722%)
+    -> TOGG-83: Mn_ALTO(17.678722%)
+    -> TOGG-85: Mn_ALTO(18.678722%)
+    -> TOGG-87: Mn_ALTO(19.678722%)
+    -> VTT JUAN CHICO: Mn_ALTO(20.678722%)
+    -> TOGG-90: Mn_ALTO(15.678722%)
+    -> TOGG-92: Mn_ALTO(16.678722%)
+    -> TOGG-94: Mn_ALTO(17.678722%)
+    -> TOGG-96: Mn_ALTO(18.678722%)
+    -> TOGG-98: Mn_ALTO(19.678722%)
+    -> TOGG-100: Mn_ALTO(20.678722%)
+    -> TOGG-102: Mn_ALTO(21.678722%)
+    -> TOGG-104: Mn_ALTO(16.678722%)
+    -> TOGG-106: Mn_ALTO(17.678722%)
+    -> TOGG-107b: Mn_ALTO(18.678722%)
+    -> TOGG-109: Mn_ALTO(19.678722%)
+    -> TOGG-111: Mn_ALTO(20.678722%)
+    -> DIGG-02: Mn_ALTO(21.678722%)
+    -> DIGG-04: Mn_ALTO(22.678722%)
+    -> DIIGG-06: Mn_ALTO(17.678722%)
+    -> DIGG-08: Mn_ALTO(18.678722%)
+    -> DIGG-10: Mn_ALTO(19.678722%)
+    -> DIGG-12: Mn_ALTO(20.678722%)
+    -> DIGG-14: Mn_ALTO(21.678722%)
+    -> DIGG-16: Mn_ALTO(22.678722%)
+    -> DIGG-18: Mn_ALTO(23.678722%)
+    -> DIGG-21: Mn_ALTO(15.678722%)
+    -> DIGG-23: Mn_ALTO(16.678722%)
+    -> DIGG-25: Mn_ALTO(17.678722%)
+    -> DIGG-27: Mn_ALTO(18.678722%)
+    -> DIGG-29: Mn_ALTO(19.678722%)
+    -> DIGG-30: Mn_ALTO(20.678722%)
+    -> DIGG-31: Mn_ALTO(21.678722%)
+    -> parm-66: Mn_ALTO(1.100204%)
+    -> CELCBS-06: Y_ALTO(601.88ppm)
+    -> TRGG-16: Mn_ALTO(1.061241%)
+    -> COPR-04B: Ca_ALTO(102433.83ppm)
+    -> SJGG-323GRT: Fe_ALTO(17.736172%)
+    -> CAPR-43: Fe_ALTO(16.92112%)
+    -> QUPR-31A: Ca_ALTO(80189.98ppm)
+
+--- PASO 3: Tratar valores BLD (=1 → 0.5) ---
+  Th_ppm: 801 valores BLD → 0.5  (flag en Th_ppm_cens)
+  La_ppm: 298 valores BLD → 0.5  (flag en La_ppm_cens)
+  Pr_ppm: 180 valores BLD → 0.5  (flag en Pr_ppm_cens)
+  Ce_ppm: 169 valores BLD → 0.5  (flag en Ce_ppm_cens)
+  Nd_ppm: 145 valores BLD → 0.5  (flag en Nd_ppm_cens)
+  Y_ppm: 10 valores BLD → 0.5  (flag en Y_ppm_cens)
+
+--- PASO 4: Marcar muestras duplicadas ---
+  MADBS-14: 2 registros
+  MADBS-72B: 2 registros
+  amrm-08: 2 registros
+  VTT JUAN CHICO: 2 registros
+  DIGG-62: 2 registros
+  FLPR-01: 2 registros
+  FLPR-06: 2 registros
+  POPR-19B: 2 registros
+  LPPR-23: 2 registros
+  carm-39: 2 registros
+  BEPR-40: 2 registros
+  SJGG-30: 2 registros
+  CMPR-58: 2 registros
+  CHPR-71: 3 registros
+  Total muestras duplicadas: 14
+
+--- PASO 5: Estandarizar litología ---
+  Litologías cambiadas: 630
+  Sin asignar: 37
+  Litologías únicas finales: 115
+
+--- PASO 6: Corregir COTA anómala ---
+  COPR-13(B): COTA_M=-1.0 → NaN
+  Corregidas: 1
+
+--- PASO 7: Evaluar TLC_REO_P3 ---
+  Registros con dato: 362 (12.5%)
+  Columna mantenida — cobertura parcial documentada
+
+--- EXPORTAR ---
+  Archivo: c:\Users\geolo\OneDrive\Documentos\INDUCTA\ANTI\001\BD_Ytrio_LIMPIO.csv
+  Filas: 2907
+  Columnas: 39
+
+=== COLUMNAS FINALES (39) ===
+   1. FID  (int64)
+   2. Shape *  (str)
+   3. Sample  (str)
+   4. UTM_N  (int64)
+   5. UTM_E  (int64)
+   6. COTA_M  (float64)
+   7. Litology  (str)
+   8. Lithocode  (str)
+   9. Cl_ppm  (float64)
+  10. K__  (float64)
+  11. K  (float64)
+  12. Ca_ppm  (float64)
+  13. Ti__  (float64)
+  14. Ti  (float64)
+  15. V_ppm  (float64)
+  16. Cr_ppm  (float64)
+  17. Mn_  (float64)
+  18. Mn  (float64)
+  19. Fe__  (float64)
+  20. Fe  (float64)
+  21. Y_ppm  (float64)
+  22. Y_pond  (float64)
+  23. Ce_ppm  (float64)
+  24. Th_ppm  (float64)
+  25. La_ppm  (float64)
+  26. Pr_ppm  (float64)
+  27. Nd_ppm  (float64)
+  28. TLC_REO_P3  (str)
+  29. Obs  (str)
+  30. SEGMENTO  (str)
+  31. FLAG_OUTLIER  (str)
+  32. Th_ppm_cens  (int64)
+  33. La_ppm_cens  (int64)
+  34. Pr_ppm_cens  (int64)
+  35. Ce_ppm_cens  (int64)
+  36. Nd_ppm_cens  (int64)
+  37. Y_ppm_cens  (int64)
+  38. FLAG_DUPLICADO  (str)
+  39. Litology_STD  (str)
+
+==================================================
+  RESUMEN DE LIMPIEZA
+==================================================
+  Columnas: 90 → 39
+  Eliminadas: 60 columnas vacías
+  Outliers marcados: 67 registros
+  BLD sustituidos: Th=801, La=298, Pr=180, Ce=169, Nd=145, Y=10
+  Duplicados: 14 muestras
+  Litologías estandarizadas: 630
+  Cotas corregidas: 1
+==================================================

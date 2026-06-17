@@ -1285,6 +1285,10 @@ export default function App() {
   const pdfInputRef  = useRef(null)
   const mapRef       = useRef(null)
   const [pdfPending, setPdfPending] = useState(null) // { name, imageUrl } esperando coords
+  const [showDriveBrowser, setShowDriveBrowser] = useState(false)
+  const [driveBrowserFiles, setDriveBrowserFiles] = useState([])
+  const [driveBrowserPath, setDriveBrowserPath] = useState([{ id: 'root', name: 'Mi Drive' }])
+  const [isDriveBrowsing, setIsDriveBrowsing] = useState(false)
 
   // SECURITY: Verifica si el token de Drive sigue vigente (con 60s de margen)
   const isDriveTokenValid = () =>
@@ -1299,7 +1303,7 @@ export default function App() {
 
     },
     onError: () => alert('Error al iniciar sesión con Google'),
-    scope: 'https://www.googleapis.com/auth/drive.file openid email profile',
+    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly openid email profile',
   })
 
 
@@ -1867,6 +1871,99 @@ export default function App() {
     e.target.value = ''
   }
 
+  // ─── DRIVE BROWSER: navegar carpetas y cargar archivos ─────────────────────
+  const GEO_EXTENSIONS = ['kml','kmz','geojson','json','gpx','zip','shp','tif','tiff']
+
+  const browseDriveFolder = useCallback(async (folderId = 'root', folderName = 'Mi Drive') => {
+    if (!isDriveTokenValid()) { alert('Reconecta Google Drive primero.'); return }
+    setIsDriveBrowsing(true)
+    try {
+      const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`)
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=folder,name&fields=files(id,name,mimeType,size)&pageSize=100`,
+        { headers: { Authorization: `Bearer ${driveToken}` } }
+      )
+      const data = await res.json()
+      if (data.error) throw new Error(data.error.message)
+      // Filter: show folders + geo files only
+      const filtered = (data.files || []).filter(f => {
+        if (f.mimeType === 'application/vnd.google-apps.folder') return true
+        const ext = f.name.split('.').pop().toLowerCase()
+        return GEO_EXTENSIONS.includes(ext)
+      })
+      setDriveBrowserFiles(filtered)
+      setShowDriveBrowser(true)
+    } catch (err) {
+      console.error('Drive browse error', err)
+      alert('Error al leer Drive: ' + err.message)
+    } finally {
+      setIsDriveBrowsing(false)
+    }
+  }, [driveToken, tokenExpiry])
+
+  const loadDriveLayer = useCallback(async (fileId, fileName) => {
+    if (!isDriveTokenValid()) { alert('Reconecta Google Drive.'); return }
+    setIsDriveBrowsing(true)
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        { headers: { Authorization: `Bearer ${driveToken}` } }
+      )
+      const arrayBuffer = await res.arrayBuffer()
+      const ext = fileName.split('.').pop().toLowerCase()
+
+      if (ext === 'kmz') {
+        const { default: JSZip } = await import('jszip')
+        const zip = await JSZip.loadAsync(arrayBuffer)
+        const kmlFile = Object.values(zip.files).find(f => f.name.endsWith('.kml'))
+        if (kmlFile) {
+          const { kml } = await import('@tmcw/togeojson')
+          const text = await kmlFile.async('text')
+          const dom = new DOMParser().parseFromString(text, 'text/xml')
+          const geojson = sanitizeGeoJSON(kml(dom))
+          setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name: fileName }])
+        }
+      } else if (ext === 'kml') {
+        const { kml } = await import('@tmcw/togeojson')
+        const text = new TextDecoder().decode(arrayBuffer)
+        const dom = new DOMParser().parseFromString(text, 'text/xml')
+        const geojson = sanitizeGeoJSON(kml(dom))
+        setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name: fileName }])
+      } else if (ext === 'gpx') {
+        const { gpx } = await import('@tmcw/togeojson')
+        const text = new TextDecoder().decode(arrayBuffer)
+        const dom = new DOMParser().parseFromString(text, 'text/xml')
+        const geojson = sanitizeGeoJSON(gpx(dom))
+        setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name: fileName }])
+      } else if (ext === 'geojson' || ext === 'json') {
+        const text = new TextDecoder().decode(arrayBuffer)
+        const geojson = sanitizeGeoJSON(JSON.parse(text))
+        setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: geojson, name: fileName }])
+      } else if (ext === 'zip' || ext === 'shp') {
+        const { parseZip } = await import('shpjs')
+        const geojson = await parseZip(arrayBuffer)
+        if (Array.isArray(geojson)) {
+          geojson.forEach((layer, i) => {
+            setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: sanitizeGeoJSON(layer), name: `${fileName} (${i + 1})` }])
+          })
+        } else {
+          setExternalLayers(prev => [...prev, { id: generateId(), type: 'geojson', data: sanitizeGeoJSON(geojson), name: fileName }])
+        }
+      } else if (ext === 'tif' || ext === 'tiff') {
+        const { default: parseGeoraster } = await import('georaster')
+        const raster = await parseGeoraster(arrayBuffer)
+        setExternalLayers(prev => [...prev, { id: generateId(), type: 'geotiff', georaster: raster, name: fileName }])
+      }
+      setShowDriveBrowser(false)
+      alert(`\u2705 Capa "${fileName}" cargada desde Drive`)
+    } catch (err) {
+      console.error('Drive layer load error', err)
+      alert('Error al cargar archivo: ' + err.message)
+    } finally {
+      setIsDriveBrowsing(false)
+    }
+  }, [driveToken, tokenExpiry])
+
   // ─── CORE ZIP GENERATOR ───
   const generateZipBlob = async () => {
     const exportList = visibleStations
@@ -2116,6 +2213,15 @@ export default function App() {
             fontFamily: 'Inter, sans-serif'
           }}>+ 🗺️ Capa</button>
           <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff,.gpx,.shp,.zip,.dbf,.prj,application/zip,application/x-zip-compressed,application/octet-stream,application/gpx+xml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" style={{ display: 'none' }} />
+          <button onClick={() => {
+            if (!isDriveTokenValid()) { loginToDrive(); return }
+            browseDriveFolder('root', 'Mi Drive')
+            setDriveBrowserPath([{ id: 'root', name: 'Mi Drive' }])
+          }} style={{
+            background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)',
+            color: '#22C55E', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif'
+          }}>+ ☁️ Drive</button>
           <button onClick={() => pdfInputRef.current?.click()} style={{
             background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
             color: '#F87171', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
@@ -2507,6 +2613,80 @@ export default function App() {
         onUnlock={() => { setIsUnlocked(true); setShowUnlockModal(false) }}
 
       />
+
+      {/* DRIVE BROWSER MODAL */}
+      {showDriveBrowser && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+        }}>
+          <div style={{
+            background: '#1A1A1C', borderRadius: 16, width: '100%', maxWidth: 420,
+            maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            <div style={{ padding: '16px 16px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ color: '#22C55E', fontWeight: 700, fontSize: 14 }}>☁️ Google Drive</span>
+                <button onClick={() => setShowDriveBrowser(false)} style={{
+                  background: 'none', border: 'none', color: '#888', fontSize: 20, cursor: 'pointer'
+                }}>✕</button>
+              </div>
+              {/* Breadcrumbs */}
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', fontSize: 11, color: '#888' }}>
+                {driveBrowserPath.map((p, i) => (
+                  <span key={p.id}>
+                    {i > 0 && <span style={{ margin: '0 2px' }}>›</span>}
+                    <button onClick={() => {
+                      const newPath = driveBrowserPath.slice(0, i + 1)
+                      setDriveBrowserPath(newPath)
+                      browseDriveFolder(p.id, p.name)
+                    }} style={{
+                      background: 'none', border: 'none', color: i === driveBrowserPath.length - 1 ? '#22C55E' : '#888',
+                      cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'Inter, sans-serif',
+                    }}>{p.name}</button>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+              {isDriveBrowsing && <div style={{ textAlign: 'center', color: '#888', padding: 30, fontSize: 13 }}>Cargando...</div>}
+              {!isDriveBrowsing && driveBrowserFiles.length === 0 && (
+                <div style={{ textAlign: 'center', color: '#555', padding: 30, fontSize: 12 }}>
+                  No hay archivos geo en esta carpeta
+                </div>
+              )}
+              {!isDriveBrowsing && driveBrowserFiles.map(f => {
+                const isFolder = f.mimeType === 'application/vnd.google-apps.folder'
+                return (
+                  <button key={f.id} onClick={() => {
+                    if (isFolder) {
+                      setDriveBrowserPath(prev => [...prev, { id: f.id, name: f.name }])
+                      browseDriveFolder(f.id, f.name)
+                    } else {
+                      loadDriveLayer(f.id, f.name)
+                    }
+                  }} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: 8, padding: '10px 12px', marginBottom: 4, cursor: 'pointer',
+                    textAlign: 'left', color: '#ccc', fontFamily: 'Inter, sans-serif',
+                  }}>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{isFolder ? '📁' : '🗺️'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
+                      {!isFolder && f.size && (
+                        <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{(f.size / 1024).toFixed(0)} KB</div>
+                      )}
+                    </div>
+                    {isFolder && <span style={{ fontSize: 12, color: '#555' }}>›</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

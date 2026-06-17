@@ -1,0 +1,474 @@
+[
+  {
+    "filename": "Quica 147_1140170_foto_1.jpg",
+    "lat": -36.423537,
+    "lon": -72.660599,
+    "sample_id": "1140170",
+    "CP": "QUI-CA147",
+    "size_kb": 792
+  },
+  {
+    "filename": "Quica 148_0172_foto_1.jpg",
+    "lat": -36.454203,
+    "lon": -72.543473,
+    "sample_id": "1140148",
+    "CP": "QUI-CA127",
+    "size_kb": 795
+  },
+  {
+    "filename": "Quica 148_1140171_foto_1.jpg",
+    "lat": -36.422292,
+    "lon": -72.661161,
+    "sample_id": "1140171",
+    "CP": "QUI-CA148",
+    "size_kb": 678
+  },
+  {
+    "filename": "Quica 151_1140174_foto_1.jpg",
+    "lat": -36.467333,
+    "lon": -72.629314,
+    "sample_id": "1140174",
+    "CP": "QUI-CA151",
+    "size_kb": 765
+  },
+  {
+    "filename": "Quica 152_175_foto_1.jpg",
+    "lat": -36.109784,
+    "lon": -72.531446,
+    "sample_id": "1140152",
+    "CP": "QUI-CA132",
+    "size_kb": 620
+  },
+  {
+    "filename": "Quica 155_0178_foto_1.jpg",
+    "lat": -36.082787,
+    "lon": -72.541781,
+    "sample_id": "1140155",
+    "CP": "QUI-CA136",
+    "size_kb": 378
+  },
+  {
+    "filename": "Quica 156_0179_foto_1.jpg",
+    "lat": -36.090587,
+    "lon": -72.516899,
+    "sample_id": "1140156",
+    "CP": "QUI-CA138",
+    "size_kb": 795
+  },
+  {
+    "filename": "Quica 160_0158_foto_1.jpg",
+    "lat": -36.06784,
+    "lon": -72.482545,
+    "sample_id": "1140160",
+    "CP": "QUI-CA140",
+    "size_kb": 744
+  },
+  {
+    "filename": "Quica 161_1140186_foto_1.jpg",
+    "lat": -36.580557,
+    "lon": -72.551868,
+    "sample_id": "1140186",
+    "CP": "QUI-CA161",
+    "size_kb": 814
+  },
+  {
+    "filename": "Quica 169_198_foto_1.jpg",
+    "lat": -36.021366,
+    "lon": -72.490684,
+    "sample_id": "1140169",
+    "CP": "QUI-CA146",
+    "size_kb": 546
+  },
+  {
+    "filename": "Quica 169_198_foto_2.jpg",
+    "lat": -36.021366,
+    "lon": -72.490684,
+    "sample_id": "1140169",
+    "CP": "QUI-CA146",
+    "size_kb": 458
+  },
+  {
+    "filename": "Quica 169_198_foto_3.jpg",
+    "lat": -36.021366,
+    "lon": -72.490684,
+    "sample_id": "1140169",
+    "CP": "QUI-CA146",
+    "size_kb": 529
+  },
+  {
+    "filename": "Quica 170_200_foto_1.jpg",
+    "lat": -36.423537,
+    "lon": -72.660599,
+    "sample_id": "1140170",
+    "CP": "QUI-CA147",
+    "size_kb": 626
+  },
+  {
+    "filename": "Quica 170_200_foto_2.jpg",
+    "lat": -36.423537,
+    "lon": -72.660599,
+    "sample_id": "1140170",
+    "CP": "QUI-CA147",
+    "size_kb": 556
+  },
+  {
+    "filename": "Quica 171_201_foto_1.jpg",
+    "lat": -36.422292,
+    "lon": -72.661161,
+    "sample_id": "1140171",
+    "CP": "QUI-CA148",
+    "size_kb": 813
+  },
+  {
+    "filename": "Quica 171_201_foto_2.jpg",
+    "lat": -36.422292,
+    "lon": -72.661161,
+    "sample_id": "1140171",
+    "CP": "QUI-CA148",
+    "size_kb": 801
+  },
+  {
+    "filename": "Quica 173_203_foto_1.jpg",
+    "lat": -36.465454,
+    "lon": -72.627974,
+    "sample_id": "1140173",
+    "CP": "QUI-CA150",
+    "size_kb": 787
+  },
+  {
+    "filename": "Quica 173_203_foto_2.jpg",
+    "lat": -36.465454,
+    "lon": -72.627974,
+    "sample_id": "1140173",
+    "CP": "QUI-CA150",
+    "size_kb": 661
+  },
+  {
+    "filename": "Quica 173_203_foto_3.jpg",
+    "lat": -36.465454,
+    "lon": -72.627974,
+    "sample_id": "1140173",
+    "CP": "QUI-CA150",
+    "size_kb": 661
+  },
+  {
+    "filename": "Quica 173_203_foto_4.jpg",
+    "lat": -36.465454,
+    "lon": -72.627974,
+    "sample_id": "1140173",
+    "CP": "QUI-CA150",
+    "size_kb": 512
+  },
+  {
+    "filename": "Quica 174_206_foto_1.jpg",
+    "lat": -36.467333,
+    "lon": -72.629314,
+    "sample_id": "1140174",
+    "CP": "QUI-CA151",
+    "size_kb": 857
+  },
+  {
+    "filename": "Quica 174_206_foto_2.jpg",
+    "lat": -36.467333,
+    "lon": -72.629314,
+    "sample_id": "1140174",
+    "CP": "QUI-CA151",
+    "size_kb": 776
+  },
+  {
+    "filename": "Quica 177_209_foto_1.jpg",
+    "lat": -36.488979,
+    "lon": -72.611107,
+    "sample_id": "1140177",
+    "CP": "QUI-CA154",
+    "size_kb": 796
+  },
+  {
+    "filename": "Quica 180_212_foto_1.jpg",
+    "lat": -36.529035,
+    "lon": -72.591522,
+    "sample_id": "1140180",
+    "CP": "QUI-CA157",
+    "size_kb": 584
+  },
+  {
+    "filename": "Quica 180_212_foto_2.jpg",
+    "lat": -36.529035,
+    "lon": -72.591522,
+    "sample_id": "1140180",
+    "CP": "QUI-CA157",
+    "size_kb": 761
+  },
+  {
+    "filename": "Quica 182_217_foto_1.jpg",
+    "lat": -36.530101,
+    "lon": -72.591505,
+    "sample_id": "1140182",
+    "CP": "QUI-CA158",
+    "size_kb": 763
+  },
+  {
+    "filename": "Quica 182_217_foto_2.jpg",
+    "lat": -36.530101,
+    "lon": -72.591505,
+    "sample_id": "1140182",
+    "CP": "QUI-CA158",
+    "size_kb": 410
+  },
+  {
+    "filename": "Quica 183_218_foto_1.jpg",
+    "lat": -36.530101,
+    "lon": -72.591505,
+    "sample_id": "1140183",
+    "CP": "QUI-CA158",
+    "size_kb": 596
+  },
+  {
+    "filename": "Quica 183_218_foto_2.jpg",
+    "lat": -36.530101,
+    "lon": -72.591505,
+    "sample_id": "1140183",
+    "CP": "QUI-CA158",
+    "size_kb": 684
+  },
+  {
+    "filename": "Quica 184_219_foto_1.jpg",
+    "lat": -36.555921,
+    "lon": -72.561385,
+    "sample_id": "1140184",
+    "CP": "QUI-CA159",
+    "size_kb": 669
+  },
+  {
+    "filename": "Quica 184_219_foto_2.jpg",
+    "lat": -36.555921,
+    "lon": -72.561385,
+    "sample_id": "1140184",
+    "CP": "QUI-CA159",
+    "size_kb": 785
+  },
+  {
+    "filename": "Quica 185_220_foto_1.jpg",
+    "lat": -36.580557,
+    "lon": -72.551868,
+    "sample_id": "1140185",
+    "CP": "QUI-CA160",
+    "size_kb": 753
+  },
+  {
+    "filename": "Quica 185_221_foto_1.jpg",
+    "lat": -36.580557,
+    "lon": -72.551868,
+    "sample_id": "1140185",
+    "CP": "QUI-CA160",
+    "size_kb": 794
+  },
+  {
+    "filename": "Quica 186_222_foto_1.jpg",
+    "lat": -36.580557,
+    "lon": -72.551868,
+    "sample_id": "1140186",
+    "CP": "QUI-CA161",
+    "size_kb": 706
+  },
+  {
+    "filename": "Quica 186_222_foto_2.jpg",
+    "lat": -36.580557,
+    "lon": -72.551868,
+    "sample_id": "1140186",
+    "CP": "QUI-CA161",
+    "size_kb": 637
+  },
+  {
+    "filename": "Quica 187_223_foto_1.jpg",
+    "lat": -36.564494,
+    "lon": -72.545124,
+    "sample_id": "1140187",
+    "CP": "QUI-CA161",
+    "size_kb": 722
+  },
+  {
+    "filename": "Quica 187_223_foto_2.jpg",
+    "lat": -36.564494,
+    "lon": -72.545124,
+    "sample_id": "1140187",
+    "CP": "QUI-CA161",
+    "size_kb": 690
+  },
+  {
+    "filename": "Quica 188_224_foto_1.jpg",
+    "lat": -36.561332,
+    "lon": -72.538285,
+    "sample_id": "1140188",
+    "CP": "QUI-CA162",
+    "size_kb": 818
+  },
+  {
+    "filename": "Quica 188_224_foto_2.jpg",
+    "lat": -36.561332,
+    "lon": -72.538285,
+    "sample_id": "1140188",
+    "CP": "QUI-CA162",
+    "size_kb": 835
+  },
+  {
+    "filename": "Quica 189_228_foto_1.jpg",
+    "lat": -36.561332,
+    "lon": -72.538285,
+    "sample_id": "1140189",
+    "CP": "QUI-CA162",
+    "size_kb": 818
+  },
+  {
+    "filename": "Quica 190_229_foto_1.jpg",
+    "lat": -36.561332,
+    "lon": -72.538285,
+    "sample_id": "1140190",
+    "CP": "QUI-CA162",
+    "size_kb": 860
+  },
+  {
+    "filename": "Quica 190_23_foto_1.jpg",
+    "lat": -36.561332,
+    "lon": -72.538285,
+    "sample_id": "1140190",
+    "CP": "QUI-CA162",
+    "size_kb": 417
+  },
+  {
+    "filename": "Quica 190_23_foto_2.jpg",
+    "lat": -36.561332,
+    "lon": -72.538285,
+    "sample_id": "1140190",
+    "CP": "QUI-CA162",
+    "size_kb": 438
+  },
+  {
+    "filename": "Quica 191_233_foto_1.jpg",
+    "lat": -36.561681,
+    "lon": -72.538038,
+    "sample_id": "1140191",
+    "CP": "QUI-CA163",
+    "size_kb": 833
+  },
+  {
+    "filename": "Quica 191_24_foto_1.jpg",
+    "lat": -36.561681,
+    "lon": -72.538038,
+    "sample_id": "1140191",
+    "CP": "QUI-CA163",
+    "size_kb": 442
+  },
+  {
+    "filename": "Quica 192_234_foto_1.jpg",
+    "lat": -36.561681,
+    "lon": -72.538038,
+    "sample_id": "1140192",
+    "CP": "QUI-CA163",
+    "size_kb": 827
+  },
+  {
+    "filename": "Quica 192_234_foto_2.jpg",
+    "lat": -36.561681,
+    "lon": -72.538038,
+    "sample_id": "1140192",
+    "CP": "QUI-CA163",
+    "size_kb": 796
+  },
+  {
+    "filename": "Quica 193_236_foto_1.jpg",
+    "lat": -36.54101,
+    "lon": -72.50283,
+    "sample_id": "1140193",
+    "CP": "QUI-CA164",
+    "size_kb": 713
+  },
+  {
+    "filename": "Quica 194_238_foto_1.jpg",
+    "lat": -36.532955,
+    "lon": -72.468957,
+    "sample_id": "1140194",
+    "CP": "QUI-CA165",
+    "size_kb": 657
+  },
+  {
+    "filename": "Quica 195_239_foto_1.jpg",
+    "lat": -36.337353,
+    "lon": -72.605746,
+    "sample_id": "1140195",
+    "CP": "QUI-CA166",
+    "size_kb": 873
+  },
+  {
+    "filename": "Quica 195_239_foto_2.jpg",
+    "lat": -36.337353,
+    "lon": -72.605746,
+    "sample_id": "1140195",
+    "CP": "QUI-CA166",
+    "size_kb": 633
+  },
+  {
+    "filename": "Quica 196_240_foto_1.jpg",
+    "lat": -36.339192,
+    "lon": -72.610304,
+    "sample_id": "1140196",
+    "CP": "QUI-CA167",
+    "size_kb": 368
+  },
+  {
+    "filename": "Quica 196_241_foto_1.jpg",
+    "lat": -36.339192,
+    "lon": -72.610304,
+    "sample_id": "1140196",
+    "CP": "QUI-CA167",
+    "size_kb": 475
+  },
+  {
+    "filename": "Quica 196_242_foto_1.jpg",
+    "lat": -36.339192,
+    "lon": -72.610304,
+    "sample_id": "1140196",
+    "CP": "QUI-CA167",
+    "size_kb": 421
+  },
+  {
+    "filename": "Quica 198_244_foto_1.jpg",
+    "lat": -36.348237,
+    "lon": -72.596814,
+    "sample_id": "1140198",
+    "CP": "QUI-CA169",
+    "size_kb": 696
+  },
+  {
+    "filename": "Quica156_0182_foto_1.jpg",
+    "lat": -36.090587,
+    "lon": -72.516899,
+    "sample_id": "1140156",
+    "CP": "QUI-CA138",
+    "size_kb": 841
+  },
+  {
+    "filename": "Quica159_1140184_foto_1.jpg",
+    "lat": -36.555921,
+    "lon": -72.561385,
+    "sample_id": "1140184",
+    "CP": "QUI-CA159",
+    "size_kb": 789
+  },
+  {
+    "filename": "Quizá 164_0193_foto_1.jpg",
+    "lat": -36.04831,
+    "lon": -72.476898,
+    "sample_id": "1140164",
+    "CP": "QUI-CA143",
+    "size_kb": 939
+  },
+  {
+    "filename": "Quizá 164_0193_foto_2.jpg",
+    "lat": -36.04831,
+    "lon": -72.476898,
+    "sample_id": "1140164",
+    "CP": "QUI-CA143",
+    "size_kb": 829
+  }
+]

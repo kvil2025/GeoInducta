@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ocurrencias de Granito de Biotita en Chile</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a1a;
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: linear-gradient(135deg, rgba(15, 15, 35, 0.97), rgba(25, 20, 50, 0.97));
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        }
+
+        .header-title {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-title h1 {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #c4b5fd, #f9a8d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.3px;
+        }
+
+        .header-title span {
+            font-size: 11px;
+            color: rgba(196, 181, 253, 0.6);
+            font-weight: 400;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 12px;
+        }
+
+        .stat-badge .num {
+            font-weight: 700;
+            color: #a78bfa;
+            font-size: 14px;
+        }
+
+        .stat-badge .label {
+            color: rgba(196, 181, 253, 0.7);
+        }
+
+        /* Map */
+        #map {
+            position: fixed;
+            top: 68px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+        }
+
+        /* Side Panel */
+        .side-panel {
+            position: fixed;
+            top: 68px;
+            left: 0;
+            bottom: 0;
+            width: 380px;
+            z-index: 500;
+            background: linear-gradient(180deg, rgba(15, 15, 35, 0.96), rgba(10, 10, 26, 0.98));
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(139, 92, 246, 0.15);
+            overflow-y: auto;
+            transform: translateX(0);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .side-panel.collapsed {
+            transform: translateX(-380px);
+        }
+
+        .panel-toggle {
+            position: fixed;
+            top: 80px;
+            left: 380px;
+            z-index: 501;
+            width: 32px;
+            height: 48px;
+            background: rgba(15, 15, 35, 0.95);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-left: none;
+            border-radius: 0 10px 10px 0;
+            color: #a78bfa;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .panel-toggle.collapsed {
+            left: 0;
+        }
+
+        .panel-toggle:hover {
+            background: rgba(139, 92, 246, 0.2);
+        }
+
+        .panel-section {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+        }
+
+        .panel-section h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: rgba(139, 92, 246, 0.7);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        /* Search */
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px 10px 38px;
+            background: rgba(139, 92, 246, 0.08);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 10px;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-box input:focus {
+            border-color: rgba(139, 92, 246, 0.5);
+            background: rgba(139, 92, 246, 0.12);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+        }
+
+        .search-box input::placeholder {
+            color: rgba(196, 181, 253, 0.4);
+        }
+
+        .search-box::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            opacity: 0.5;
+        }
+
+        /* Legend */
+        .legend-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 11px;
+        }
+
+        .legend-item:hover {
+            background: rgba(139, 92, 246, 0.1);
+        }
+
+        .legend-item.active {
+            background: rgba(139, 92, 246, 0.15);
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        /* Location List */
+        .location-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .location-card {
+            padding: 10px 14px;
+            background: rgba(139, 92, 246, 0.04);
+            border: 1px solid rgba(139, 92, 246, 0.08);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .location-card:hover {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: rgba(139, 92, 246, 0.25);
+            transform: translateX(4px);
+        }
+
+        .location-card.selected {
+            background: rgba(139, 92, 246, 0.15);
+            border-color: rgba(139, 92, 246, 0.4);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+        }
+
+        .location-card .loc-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #c4b5fd;
+            margin-bottom: 3px;
+        }
+
+        .location-card .loc-region {
+            font-size: 11px;
+            color: rgba(196, 181, 253, 0.5);
+        }
+
+        .location-card .loc-type {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* Custom Popup */
+        .leaflet-popup-content-wrapper {
+            background: linear-gradient(135deg, rgba(15, 15, 40, 0.98), rgba(25, 20, 55, 0.98)) !important;
+            backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(139, 92, 246, 0.3) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(139, 92, 246, 0.15) !important;
+            color: #e0e0e0 !important;
+            padding: 0 !important;
+            min-width: 320px !important;
+        }
+
+        .leaflet-popup-content {
+            margin: 0 !important;
+            line-height: 1.5 !important;
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(25, 20, 55, 0.98) !important;
+            border: 1px solid rgba(139, 92, 246, 0.3) !important;
+            border-top: none !important;
+            border-left: none !important;
+        }
+
+        .popup-content {
+            padding: 0;
+        }
+
+        .popup-header {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.1));
+            border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+            border-radius: 16px 16px 0 0;
+        }
+
+        .popup-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #c4b5fd;
+            margin-bottom: 4px;
+        }
+
+        .popup-header .popup-region {
+            font-size: 12px;
+            color: rgba(196, 181, 253, 0.6);
+        }
+
+        .popup-body {
+            padding: 16px 20px;
+        }
+
+        .popup-field {
+            margin-bottom: 12px;
+        }
+
+        .popup-field .field-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(139, 92, 246, 0.6);
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .popup-field .field-value {
+            font-size: 13px;
+            color: #d4d4d8;
+            line-height: 1.5;
+        }
+
+        .popup-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-right: 4px;
+            margin-bottom: 4px;
+        }
+
+        .popup-coords {
+            display: flex;
+            gap: 12px;
+            padding: 10px 14px;
+            background: rgba(139, 92, 246, 0.06);
+            border-radius: 10px;
+            margin-top: 8px;
+        }
+
+        .popup-coords .coord {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 12px;
+            color: #a78bfa;
+        }
+
+        .popup-coords .coord-label {
+            font-size: 10px;
+            color: rgba(196, 181, 253, 0.5);
+            margin-bottom: 2px;
+        }
+
+        /* Close button */
+        .leaflet-popup-close-button {
+            color: rgba(196, 181, 253, 0.6) !important;
+            font-size: 22px !important;
+            padding: 8px 12px !important;
+        }
+
+        .leaflet-popup-close-button:hover {
+            color: #c4b5fd !important;
+        }
+
+        /* Custom markers */
+        .custom-marker {
+            position: relative;
+        }
+
+        .marker-pulse {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.8); opacity: 0; }
+        }
+
+        /* Scrollbar */
+        .side-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .side-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .side-panel::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.3);
+            border-radius: 4px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .side-panel {
+                width: 100%;
+                height: 45%;
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                border-right: none;
+                border-top: 1px solid rgba(139, 92, 246, 0.2);
+                transform: translateY(0);
+            }
+
+            .side-panel.collapsed {
+                transform: translateY(100%);
+            }
+
+            .panel-toggle {
+                top: auto;
+                bottom: 45%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 48px;
+                height: 28px;
+                border-radius: 10px 10px 0 0;
+                border-bottom: none;
+            }
+
+            .header-stats {
+                display: none;
+            }
+        }
+
+        /* Attribution styling */
+        .leaflet-control-attribution {
+            background: rgba(15, 15, 35, 0.8) !important;
+            color: rgba(196, 181, 253, 0.5) !important;
+            font-size: 10px !important;
+        }
+
+        .leaflet-control-attribution a {
+            color: rgba(139, 92, 246, 0.7) !important;
+        }
+
+        /* Zoom controls */
+        .leaflet-control-zoom a {
+            background: rgba(15, 15, 35, 0.95) !important;
+            color: #a78bfa !important;
+            border: 1px solid rgba(139, 92, 246, 0.3) !important;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: rgba(139, 92, 246, 0.2) !important;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <div class="header-left">
+        <div class="header-icon">🪨</div>
+        <div class="header-title">
+            <h1>Granito de Biotita en Chile</h1>
+            <span>Mapa de Ocurrencias Geológicas</span>
+        </div>
+    </div>
+    <div class="header-stats">
+        <div class="stat-badge">
+            <span class="num" id="total-count">0</span>
+            <span class="label">Ocurrencias</span>
+        </div>
+        <div class="stat-badge">
+            <span class="num" id="region-count">0</span>
+            <span class="label">Regiones</span>
+        </div>
+        <div class="stat-badge">
+            <span class="num">4</span>
+            <span class="label">Batolitos</span>
+        </div>
+    </div>
+</div>
+
+<!-- Side Panel -->
+<div class="side-panel" id="sidePanel">
+    <div class="panel-section">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Buscar localidad, región o tipo...">
+        </div>
+    </div>
+
+    <div class="panel-section">
+        <h3>🎨 Leyenda — Tipo de Ocurrencia</h3>
+        <div class="legend-grid" id="legendGrid"></div>
+    </div>
+
+    <div class="panel-section" style="border-bottom: none;">
+        <h3>📍 Localidades (<span id="visible-count">0</span>)</h3>
+        <div class="location-list" id="locationList"></div>
+    </div>
+</div>
+
+<button class="panel-toggle" id="panelToggle" onclick="togglePanel()">◀</button>
+
+<!-- Map -->
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ==============================================================
+// DATA: Biotite granite occurrences in Chile
+// ==============================================================
+const occurrences = [
+    // NORTE GRANDE
+    {
+        name: "Plutón El León",
+        lat: -23.7500,
+        lng: -68.0833,
+        region: "Antofagasta",
+        type: "Batolito Cambro-Ordovícico",
+        category: "batholith",
+        age: "490–460 Ma (Cámbrico-Ordovícico)",
+        lithology: "Monzogranito de biotita",
+        minerals: ["Biotita", "Cuarzo", "Feldespato potásico", "Plagioclasa"],
+        context: "Batolito del Cordón de Lila, al sur del Salar de Atacama. Importante complejo plutónico paleozoico.",
+        source: "Andean Geology / SERNAGEOMIN"
+    },
+    {
+        name: "Plutón Tucúcaro",
+        lat: -23.8667,
+        lng: -68.1500,
+        region: "Antofagasta",
+        type: "Batolito Cambro-Ordovícico",
+        category: "batholith",
+        age: "490–460 Ma (Cámbrico-Ordovícico)",
+        lithology: "Monzogranito de biotita y hornblenda",
+        minerals: ["Biotita", "Hornblenda", "Cuarzo", "Plagioclasa", "FK"],
+        context: "Parte del Batolito del Cordón de Lila. Monzogranito con textura equigranular gruesa.",
+        source: "Andean Geology"
+    },
+    {
+        name: "Plutón Tilopozo",
+        lat: -24.1833,
+        lng: -68.2500,
+        region: "Antofagasta",
+        type: "Batolito Cambro-Ordovícico",
+        category: "batholith",
+        age: "490–460 Ma (Cámbrico-Ordovícico)",
+        lithology: "Sienogranito de biotita",
+        minerals: ["Biotita", "Cuarzo", "FK", "Plagioclasa"],
+        context: "Extremo sur del Cordón de Lila. Sienogranito rico en feldespato potásico con biotita.",
+        source: "Andean Geology"
+    },
+    {
+        name: "Plutón Cerro Cristales",
+        lat: -24.1451,
+        lng: -70.3959,
+        region: "Antofagasta",
+        type: "Intrusión Mesozoica",
+        category: "mesozoic",
+        age: "Jurásico-Cretácico",
+        lithology: "Granodiorita-granito de biotita zonado",
+        minerals: ["Biotita", "Hornblenda", "Cuarzo", "Plagioclasa"],
+        context: "Plutón zonado de la Cordillera de la Costa. Asociado al Sistema de Fallas de Atacama.",
+        source: "Andean Geology / SERNAGEOMIN"
+    },
+    {
+        name: "Granitos de Cifuncho-Pan de Azúcar",
+        lat: -25.9167,
+        lng: -70.6333,
+        region: "Atacama",
+        type: "Intrusión Paleozoica",
+        category: "paleozoic",
+        age: "285–255 Ma (Pérmico)",
+        lithology: "Sieno y monzogranito de biotita",
+        minerals: ["Biotita", "Cuarzo", "FK", "Plagioclasa", "Circón"],
+        context: "Granitos pérmicos expuestos en la Cordillera de la Costa, entre Cifuncho y Pan de Azúcar.",
+        source: "ResearchGate / SERNAGEOMIN"
+    },
+    {
+        name: "Plutón Sierra de Varas Norte",
+        lat: -24.8333,
+        lng: -69.1500,
+        region: "Antofagasta",
+        type: "Intrusión Paleozoica",
+        category: "paleozoic",
+        age: "Carbonífero-Pérmico / Triásico",
+        lithology: "Tonalita-granodiorita de biotita y anfíbola",
+        minerals: ["Biotita", "Anfíbola", "Cuarzo", "Plagioclasa"],
+        context: "Cordillera de Domeyko. Plutón intrusivo asociado a la evolución del arco magmático.",
+        source: "Andean Geology"
+    },
+    {
+        name: "Granito Orbicular de Caldera",
+        lat: -26.966,
+        lng: -70.796,
+        region: "Atacama",
+        type: "Monumento Natural",
+        category: "special",
+        age: "No determinada / Mesozoico",
+        lithology: "Tonalita orbicular con biotita",
+        minerals: ["Biotita", "Hornblenda", "Plagioclasa", "Cuarzo", "Clinopiroxeno", "Magnetita"],
+        context: "Santuario de la Naturaleza (1981). Rareza geológica mundial con estructuras esferolíticas (orbículas). 11 km al norte de Caldera.",
+        source: "Consejo de Monumentos Nacionales / MMA"
+    },
+    {
+        name: "Granitos de La Semilla",
+        lat: -27.3500,
+        lng: -70.2833,
+        region: "Atacama",
+        type: "Intrusión Paleozoica",
+        category: "paleozoic",
+        age: "Pérmico",
+        lithology: "Granito de biotita",
+        minerals: ["Biotita", "Cuarzo", "FK", "Plagioclasa"],
+        context: "Granitos pérmicos del sector La Semilla, Región de Atacama.",
+        source: "Geovirtual / SERNAGEOMIN"
+    },
+    // NORTE CHICO – PRECORDILLERA
+    {
+        name: "Complejo Las Ánimas",
+        lat: -26.4167,
+        lng: -69.8333,
+        region: "Atacama",
+        type: "Intrusión Mesozoica",
+        category: "mesozoic",
+        age: "Jurásico-Cretácico",
+        lithology: "Granodiorita-granito de biotita y hornblenda",
+        minerals: ["Biotita", "Hornblenda", "Cuarzo", "Plagioclasa", "FK"],
+        context: "Complejo plutónico de la Cordillera de la Costa, parte del Batolito Costero del norte de Chile.",
+        source: "ResearchGate"
+    },
+    {
+        name: "Complejo Las Tazas",
+        lat: -26.5833,
+        lng: -69.7167,
+        region: "Atacama",
+        type: "Intrusión Mesozoica",
+        category: "mesozoic",
+        age: "Jurásico-Cretácico",
+        lithology: "Diorita-granodiorita de biotita",
+        minerals: ["Biotita", "Hornblenda", "Plagioclasa", "Cuarzo"],
+        context: "Complejo intrusivo asociado al magmatismo Mesozoico de la Cordillera de la Costa.",
+        source: "ResearchGate"
+    },
+    {
+        name: "Complejo La Borracha",
+        lat: -26.6667,
+        lng: -69.7500,
+        region: "Atacama",
+        type: "Intrusión Mesozoica",
+        category: "mesozoic",
+        age: "Jurásico-Cretácico",
+        lithology: "Leucogranito-granito de biotita",
+        minerals: ["Biotita", "Cuarzo", "FK", "Plagioclasa", "Moscovita"],
+        context: "Plutón leucocrático del Batolito Costero norte. Incluye leucogranitos con biotita escasa.",
+        source: "ResearchGate"
+    },
+    // PRECORDILLERA NORTE
+    {
+        name: "Intrusivos de Collahuasi",
+        lat: -21.0321,
+        lng: -68.7509,
+        region: "Tarapacá",
+        type: "Intrusión Cenozoica",
+        category: "cenozoic",
+        age: "Eoceno (40–35 Ma)",
+        lithology: "Granodiorita de hornblenda-biotita",
+        minerals: ["Biotita", "Hornblenda", "Cuarzo", "Plagioclasa", "FK"],
+        context: "Precordillera. Asociado al sistema de pórfidos cupríferos de Collahuasi. Cinturón metalogénico Eoceno.",
+        source: "GSA / ResearchGate"
+    },
+    {
+        name: "Intrusivos de El Abra-Chuquicamata",
+        lat: -22.2923,
+        lng: -68.9032,
+        region: "Antofagasta",
+        type: "Intrusión Cenozoica",
+        category: "cenozoic",
+        age: "Eoceno (40–35 Ma)",
+        lithology: "Granodiorita de biotita y hornblenda",
+        minerals: ["Biotita", "Hornblenda", "Cuarzo", "Plagioclasa", "FK", "Molibdenita"],
+        context: "Precordillera. Plutones asociados al megayacimiento de cobre de Chuquicamata.",
+        source: "GSA / SERNAGEOMIN"
+    },
+    // CHILE CENTRAL
+    {
+        name: "Granitos de Isla Negra",
+        lat: -33.4412,
+        lng: -71.6829,
+        region: "Valparaíso",
+        type: "Batolito Costero",
+        category: "batholith",
+        age: "Paleozoico (Carbonífero-Pérmico)",
+        lithology: "Granito-granodiorita de biotita",
+        minerals: ["Biotita", "Cuarzo", "FK", "Plagioclasa", "Hornblenda"],
+        context: "Batolito de la Costa de Chile Central. Afloramientos costeros entre Algarrobo e Isla Negra.",
+        source: "Aventuras Geológicas / SERNAGEOMIN"
+    },
+    {
+        name: "Plutón La Obra (El Teniente)",
+        lat: -34.0833,
+        lng: -70.3833,
+        region: "O'Higgins",
+        type: "Intrusión Cenozoica",
+        category: "cenozoic",
+        age: "Mioceno (15–10 Ma)",
+        lithology: "Granodiorita-cuarzomonzonita de biotita y hornblenda",
+        minerals: ["Biotita", "Hornblenda", "Cuarzo", "Plagioclasa", "FK"],
+        context: "Precordillera andina, región de El Teniente. Asociado al arco magmático Mioceno y mineralización de Cu-Mo.",
+        source: "Andean Geology"
+    },
+    {
+        name: "Batolito de la Costa (Santiago–Valparaíso)",
+        lat: -33.2000,
+        lng: -71.5500,
+        region: "Valparaíso",
+        type: "Batolito Costero",
+        category: "batholith",
+        age: "Carbonífero-Pérmico (330–280 Ma)",
+        lithology: "Granito y granodiorita de biotita",
+        minerals: ["Biotita", "Cuarzo", "FK", "Plagioclasa", "Hornblenda"],
+        context: "Batolito Costero de Chile Central. Afloramientos extensos en la Cordillera de la Costa entre Santiago y Valparaíso.",
+        source: "SERNAGEOMIN / Wikipedia"
+    },
+    // CENTRO-SUR
+    {
+        name: "Batolito de Nahuelbuta",
+        lat: -37.7167,
+        lng: -73.0333,
+        region: "Biobío / Araucanía",
+        type: "Batolito Costero",
+        category: "batholith",
+        age: "Carbonífero-Pérmico (320–290 Ma)",
+        lithology: "Granito de biotita y muscovita",
+        minerals: ["Biotita", "Muscovita", "Cuarzo", "FK", "Plagioclasa"],
+        context: "Cordillera de Nahuelbuta. Uno de los mayores cuerpos graníticos del Batolito Costero en Chile centro-sur.",
+        source: "UdeC / SERNAGEOMIN"
+    },
+    {
+        name: "Plutón Deuco",
+        lat: -37.9167,
+        lng: -72.9500,
+        region: "Araucanía",
+        type: "Batolito Costero",
+        category: "batholith",
+        age: "Carbonífero-Pérmico",
+        lithology: "Granito de biotita",
+        minerals: ["Biotita", "Cuarzo", "FK", "Plagioclasa"],
+        context: "Plutón diferenciado dentro de la Cordillera de Nahuelbuta, parte del Batolito Costero.",
+        source: "UdeC"
+    },
+    // PATAGONIA
+    {
+        name: "Granitos de Valle de Cochamó",
+        lat: -41.4200,
+        lng: -72.1347,
+        region: "Los Lagos",
+        type: "Batolito Patagónico",
+        category: "batholith",
+        age: "Cretácico-Mioceno",
+        lithology: "Granito de biotita masivo",
+        minerals: ["Biotita", "Cuarzo", "FK", "Plagioclasa", "Hornblenda"],
+        context: "Batolito Patagónico Norte. Paredes de granito de hasta 1.500 m, 'Yosemite de Sudamérica'.",
+        source: "Wikipedia / Cochamó a un Click"
+    },
+    {
+        name: "Intrusivos de Paso Puyehue",
+        lat: -40.7132,
+        lng: -71.9440,
+        region: "Los Ríos",
+        type: "Batolito Patagónico",
+        category: "batholith",
+        age: "Cretácico-Mioceno",
+        lithology: "Granodiorita-granito de biotita",
+        minerals: ["Biotita", "Hornblenda", "Cuarzo", "Plagioclasa"],
+        context: "Margen norte del Batolito Patagónico. Intrusiones graníticas en los Andes de la Región de Los Ríos.",
+        source: "UNLP / SERNAGEOMIN"
+    },
+    {
+        name: "Plutón Cerro Recoba (Chaitén)",
+        lat: -42.9317,
+        lng: -72.6659,
+        region: "Los Lagos",
+        type: "Batolito Patagónico",
+        category: "batholith",
+        age: "Cretácico-Paleógeno",
+        lithology: "Granito de biotita y hornblenda",
+        minerals: ["Biotita", "Hornblenda", "Cuarzo", "Plagioclasa", "FK"],
+        context: "Batolito Patagónico Norte, cercanías de Chaitén. Granito intrusivo en las rocas metamórficas.",
+        source: "UChile / SERNAGEOMIN"
+    },
+    {
+        name: "Laccolito Torres del Paine",
+        lat: -50.9725,
+        lng: -73.0000,
+        region: "Magallanes",
+        type: "Intrusión Cenozoica",
+        category: "cenozoic",
+        age: "~12 Ma (Mioceno)",
+        lithology: "Granito de biotita (núcleo)",
+        minerals: ["Biotita", "Cuarzo", "FK", "Plagioclasa", "Hornblenda"],
+        context: "Laccolito icónico del Parque Nacional Torres del Paine. Núcleo de granito claro con biotita, cubierto por rocas sedimentarias oscuras.",
+        source: "Academia.edu / SERNAGEOMIN"
+    },
+    {
+        name: "Batolito Patagónico Sur (Aysén)",
+        lat: -45.4000,
+        lng: -73.0500,
+        region: "Aysén",
+        type: "Batolito Patagónico",
+        category: "batholith",
+        age: "Jurásico-Mioceno",
+        lithology: "Granodiorita y granito de biotita y hornblenda",
+        minerals: ["Biotita", "Hornblenda", "Cuarzo", "Plagioclasa", "FK"],
+        context: "Segmento central del Batolito Patagónico. Complejo intrusivo de gran extensión.",
+        source: "SERNAGEOMIN"
+    },
+    {
+        name: "Intrusivos de Tierra del Fuego",
+        lat: -54.7500,
+        lng: -69.4833,
+        region: "Magallanes",
+        type: "Batolito Patagónico",
+        category: "batholith",
+        age: "Cretácico-Paleógeno",
+        lithology: "Tonalita-granodiorita de biotita",
+        minerals: ["Biotita", "Hornblenda", "Cuarzo", "Plagioclasa"],
+        context: "Extremo sur del Batolito Patagónico. Intrusiones graníticas en la Cordillera Darwin.",
+        source: "SERNAGEOMIN"
+    }
+];
+
+// ==============================================================
+// CATEGORY CONFIG
+// ==============================================================
+const categories = {
+    batholith: { label: "Batolitos", color: "#8b5cf6", icon: "⛰️" },
+    paleozoic: { label: "Paleozoico", color: "#06b6d4", icon: "🔷" },
+    mesozoic: { label: "Mesozoico", color: "#10b981", icon: "🟢" },
+    cenozoic: { label: "Cenozoico", color: "#f59e0b", icon: "🟡" },
+    special: { label: "Monumento Natural", color: "#ec4899", icon: "⭐" }
+};
+
+// ==============================================================
+// INIT MAP
+// ==============================================================
+const map = L.map('map', {
+    center: [-36.0, -71.0],
+    zoom: 4,
+    zoomControl: true,
+    attributionControl: true,
+    zoomSnap: 0.5,
+    wheelPxPerZoomLevel: 120
+});
+
+// Dark tile layer
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    maxZoom: 19
+}).addTo(map);
+
+// Chile border outline (simplified)
+const chileBorder = L.polyline([
+    [-17.5, -69.5], [-18.5, -70.3], [-20.0, -70.1], [-22.0, -70.0],
+    [-24.0, -70.5], [-26.0, -70.6], [-27.1, -70.9], [-29.0, -71.3],
+    [-30.0, -71.5], [-31.0, -71.6], [-33.0, -71.6], [-34.0, -72.0],
+    [-36.0, -73.0], [-38.0, -73.5], [-40.0, -73.7], [-42.0, -74.0],
+    [-44.0, -74.5], [-46.0, -75.0], [-48.0, -75.5], [-50.0, -75.3],
+    [-52.0, -74.0], [-53.5, -71.5], [-55.0, -69.0], [-55.8, -67.5]
+], {
+    color: 'rgba(139, 92, 246, 0.2)',
+    weight: 1.5,
+    dashArray: '8, 6'
+}).addTo(map);
+
+// ==============================================================
+// MARKERS & LAYERS
+// ==============================================================
+const markers = {};
+const markerLayers = {};
+let selectedCard = null;
+let activeFilters = new Set(Object.keys(categories));
+
+function createMarkerIcon(category, size = 14) {
+    const color = categories[category].color;
+    return L.divIcon({
+        className: 'custom-marker',
+        html: `
+            <div style="position:relative;width:${size}px;height:${size}px;">
+                <div class="marker-pulse" style="background:${color};"></div>
+                <div style="
+                    width:${size}px;height:${size}px;
+                    background: radial-gradient(circle, ${color}, ${color}aa);
+                    border-radius:50%;
+                    border: 2px solid rgba(255,255,255,0.5);
+                    box-shadow: 0 0 ${size}px ${color}88, 0 0 ${size * 2}px ${color}44;
+                    position:absolute;top:0;left:0;
+                "></div>
+            </div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+        popupAnchor: [0, -size / 2 - 4]
+    });
+}
+
+function createPopupContent(occ) {
+    const cat = categories[occ.category];
+    const mineralTags = occ.minerals.map(m =>
+        `<span class="popup-tag" style="background:${cat.color}22;color:${cat.color};border:1px solid ${cat.color}44;">${m}</span>`
+    ).join('');
+
+    return `
+        <div class="popup-content">
+            <div class="popup-header">
+                <h3>${cat.icon} ${occ.name}</h3>
+                <div class="popup-region">${occ.region} · ${occ.type}</div>
+            </div>
+            <div class="popup-body">
+                <div class="popup-field">
+                    <div class="field-label">Litología</div>
+                    <div class="field-value">${occ.lithology}</div>
+                </div>
+                <div class="popup-field">
+                    <div class="field-label">Edad</div>
+                    <div class="field-value">${occ.age}</div>
+                </div>
+                <div class="popup-field">
+                    <div class="field-label">Mineralogía</div>
+                    <div class="field-value">${mineralTags}</div>
+                </div>
+                <div class="popup-field">
+                    <div class="field-label">Contexto Geológico</div>
+                    <div class="field-value">${occ.context}</div>
+                </div>
+                <div class="popup-coords">
+                    <div>
+                        <div class="coord-label">Latitud</div>
+                        <div class="coord">${occ.lat.toFixed(4)}°</div>
+                    </div>
+                    <div>
+                        <div class="coord-label">Longitud</div>
+                        <div class="coord">${occ.lng.toFixed(4)}°</div>
+                    </div>
+                </div>
+                <div style="margin-top:10px;font-size:10px;color:rgba(196,181,253,0.4);">Fuente: ${occ.source}</div>
+            </div>
+        </div>
+    `;
+}
+
+// Add markers to map
+occurrences.forEach((occ, idx) => {
+    const marker = L.marker([occ.lat, occ.lng], {
+        icon: createMarkerIcon(occ.category, occ.category === 'special' ? 18 : 14)
+    }).addTo(map);
+
+    marker.bindPopup(createPopupContent(occ), {
+        maxWidth: 360,
+        minWidth: 320,
+        className: 'custom-popup'
+    });
+
+    marker.on('click', () => {
+        selectLocation(idx);
+    });
+
+    markers[idx] = marker;
+});
+
+// ==============================================================
+// SIDE PANEL
+// ==============================================================
+function buildLegend() {
+    const grid = document.getElementById('legendGrid');
+    grid.innerHTML = '';
+    Object.entries(categories).forEach(([key, cat]) => {
+        const item = document.createElement('div');
+        item.className = `legend-item ${activeFilters.has(key) ? 'active' : ''}`;
+        item.innerHTML = `
+            <div class="legend-dot" style="background:${cat.color};color:${cat.color};"></div>
+            <span>${cat.icon} ${cat.label}</span>
+        `;
+        item.onclick = () => toggleFilter(key);
+        grid.appendChild(item);
+    });
+}
+
+function buildLocationList(filter = '') {
+    const list = document.getElementById('locationList');
+    list.innerHTML = '';
+    let count = 0;
+
+    occurrences.forEach((occ, idx) => {
+        if (!activeFilters.has(occ.category)) return;
+        if (filter) {
+            const search = filter.toLowerCase();
+            const match = occ.name.toLowerCase().includes(search) ||
+                          occ.region.toLowerCase().includes(search) ||
+                          occ.type.toLowerCase().includes(search) ||
+                          occ.lithology.toLowerCase().includes(search);
+            if (!match) return;
+        }
+
+        count++;
+        const cat = categories[occ.category];
+        const card = document.createElement('div');
+        card.className = 'location-card';
+        card.id = `loc-${idx}`;
+        card.innerHTML = `
+            <div class="loc-name">${cat.icon} ${occ.name}</div>
+            <div class="loc-region">${occ.region}</div>
+            <span class="loc-type" style="background:${cat.color}18;color:${cat.color};border:1px solid ${cat.color}33;">${occ.type}</span>
+        `;
+        card.onclick = () => {
+            map.setView([occ.lat, occ.lng], 10, { animate: false });
+            markers[idx].openPopup();
+            selectLocation(idx);
+        };
+        list.appendChild(card);
+    });
+
+    document.getElementById('visible-count').textContent = count;
+}
+
+function selectLocation(idx) {
+    if (selectedCard) selectedCard.classList.remove('selected');
+    const card = document.getElementById(`loc-${idx}`);
+    if (card) {
+        card.classList.add('selected');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        selectedCard = card;
+    }
+}
+
+function toggleFilter(category) {
+    if (activeFilters.has(category)) {
+        activeFilters.delete(category);
+    } else {
+        activeFilters.add(category);
+    }
+
+    // Show/hide markers
+    occurrences.forEach((occ, idx) => {
+        if (activeFilters.has(occ.category)) {
+            markers[idx].addTo(map);
+        } else {
+            map.removeLayer(markers[idx]);
+        }
+    });
+
+    buildLegend();
+    buildLocationList(document.getElementById('searchInput').value);
+}
+
+function togglePanel() {
+    const panel = document.getElementById('sidePanel');
+    const toggle = document.getElementById('panelToggle');
+    panel.classList.toggle('collapsed');
+    toggle.classList.toggle('collapsed');
+    toggle.textContent = panel.classList.contains('collapsed') ? '▶' : '◀';
+    setTimeout(() => map.invalidateSize(), 400);
+}
+
+// Search
+document.getElementById('searchInput').addEventListener('input', (e) => {
+    buildLocationList(e.target.value);
+});
+
+// ==============================================================
+// INIT
+// ==============================================================
+const uniqueRegions = new Set(occurrences.map(o => o.region));
+document.getElementById('total-count').textContent = occurrences.length;
+document.getElementById('region-count').textContent = uniqueRegions.size;
+
+buildLegend();
+buildLocationList();
+
+// Fit bounds to show all markers precisely
+const allPoints = occurrences.map(o => [o.lat, o.lng]);
+const markerBounds = L.latLngBounds(allPoints);
+map.fitBounds(markerBounds, { padding: [40, 40], animate: false, maxZoom: 6 });
+</script>
+</body>
+</html>

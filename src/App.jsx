@@ -871,7 +871,7 @@ function StationSidebar({ stations, onClose, onExport, isExporting, onDriveSync,
               <div style={{ fontSize: 36, marginBottom: 10 }}>🗺️</div>
               Sin puntos aún.<br />Toca el mapa para comenzar.
             </div>
-          ) : stations.map((s, i) => {
+          ) : [...stations].reverse().map((s, i) => {
             const fCnt = s.muestras.reduce((a, m) => a + (m.fotos?.length || 0), 0)
             const hasAudio = s.muestras.some(m => m.audioBlob)
             const rocaColor = ROCA_COLORS[s.muestras[0]?.rocaCaja] || '#D4AF37'

@@ -2013,8 +2013,13 @@ export default function App() {
       const firstY = parseFloat(rows[0]['Ym'] || rows[0]['ym'] || 0)
       if (!firstX || !firstY) { alert('No se encontraron columnas Xm/Ym en el archivo.'); return }
 
-      // Detect UTM zone: Chile typically zone 18S or 19S
-      const utmZone = firstX > 500000 ? 19 : 18 // rough heuristic for Chile
+      // Ask user for UTM zone (Chile: 18S or 19S)
+      const zoneInput = prompt(
+        `Coordenadas UTM detectadas:\nEste: ${firstX.toFixed(0)}\nNorte: ${firstY.toFixed(0)}\n\n¿Zona UTM? (18 o 19)\nChile central/sur = 18, Chile norte = 19`,
+        '19'
+      )
+      if (!zoneInput) return
+      const utmZone = parseInt(zoneInput) || 19
 
       // Geochemistry column names (everything after TAKEN BY)
       const geoChemCols = Object.keys(rows[0]).filter(k => {

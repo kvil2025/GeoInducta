@@ -2449,10 +2449,10 @@ export default function App() {
           return null
         })}
 
-        {stations.map((s, i) => (
+        {visibleStations.map((s, i) => (
           <Marker key={s.id || i} position={s.position} icon={createStationIcon(s.muestras)}>
             <Popup>
-              <div style={{ minWidth: 200, fontFamily: 'Inter, sans-serif', fontSize: 12 }}>
+              <div style={{ minWidth: 200, maxHeight: 300, overflowY: 'auto', fontFamily: 'Inter, sans-serif', fontSize: 12 }}>
                 <strong style={{ color: '#B91C1C', display: 'block', marginBottom: 6 }}>
                   Punto #{i + 1} — {s.muestras.length} muestra{s.muestras.length !== 1 ? 's' : ''}
                 </strong>
@@ -2465,6 +2465,16 @@ export default function App() {
                     {m.rocaCaja && <div>Roca: {m.rocaCaja}</div>}
                     {m.mineralizacion && <div>Mineralización: {m.mineralizacion}</div>}
                     {m.fotos?.length > 0 && <div>📸 {m.fotos.length} foto{m.fotos.length !== 1 ? 's' : ''}</div>}
+                    {m.geoquimica && Object.keys(m.geoquimica).length > 0 && (
+                      <details style={{ marginTop: 4 }}>
+                        <summary style={{ cursor: 'pointer', color: '#A855F7', fontSize: 11 }}>📊 Geoquímica ({Object.keys(m.geoquimica).length} elementos)</summary>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 8px', marginTop: 4, fontSize: 10 }}>
+                          {Object.entries(m.geoquimica).map(([k, v]) => (
+                            <div key={k}><b>{k}:</b> {typeof v === 'number' ? v.toFixed(4) : v}</div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </div>
                 ))}
               </div>

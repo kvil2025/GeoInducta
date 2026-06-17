@@ -1311,6 +1311,7 @@ export default function App() {
   const [externalLayers, setExternalLayers] = useState([])
   const fileInputRef = useRef(null)
   const pdfInputRef  = useRef(null)
+  const bdInputRef   = useRef(null)
   const mapRef       = useRef(null)
   const [pdfPending, setPdfPending] = useState(null) // { name, imageUrl } esperando coords
   const [showDriveBrowser, setShowDriveBrowser] = useState(false)
@@ -2342,7 +2343,7 @@ export default function App() {
             color: '#60A5FA', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
             fontFamily: 'Inter, sans-serif'
           }}>+ 🗺️ Capa</button>
-          <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff,.gpx,.shp,.zip,.dbf,.prj,.xls,.xlsx,application/zip,application/x-zip-compressed,application/octet-stream,application/gpx+xml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style={{ display: 'none' }} />
+          <input type="file" ref={fileInputRef} onChange={handleLayerUpload} accept=".kml,.kmz,.geojson,.json,.tif,.tiff,.gpx,.shp,.zip,.dbf,.prj,application/zip,application/x-zip-compressed,application/octet-stream,application/gpx+xml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz" style={{ display: 'none' }} />
           <button onClick={() => {
             if (!isDriveTokenValid()) { loginToDrive(); return }
             browseDriveFolder('root', 'Mi Drive')
@@ -2352,6 +2353,22 @@ export default function App() {
             color: '#22C55E', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
             fontFamily: 'Inter, sans-serif'
           }}>+ ☁️ Drive</button>
+          <button onClick={() => bdInputRef.current?.click()} style={{
+            background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.4)',
+            color: '#A855F7', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif'
+          }}>+ 📊 BD</button>
+          <input type="file" ref={bdInputRef} onChange={async (e) => {
+            const file = e.target.files[0]
+            if (!file) return
+            try {
+              const arrayBuffer = await file.arrayBuffer()
+              await handleBDImport(arrayBuffer, file.name)
+            } catch (err) {
+              alert('Error: ' + err.message)
+            }
+            e.target.value = ''
+          }} accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" style={{ display: 'none' }} />
           <button onClick={() => pdfInputRef.current?.click()} style={{
             background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)',
             color: '#F87171', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer',
